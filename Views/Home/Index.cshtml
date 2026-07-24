@@ -1,0 +1,13 @@
+@{
+    ViewData["Title"] = "Home Page";
+}
+
+<div class="text-center py-5">
+    <h1 class="display-4 fw-bold mb-3">Customer Management System</h1>
+    <p class="lead text-muted mb-4">Manage customer relationships and tasks.</p>
+    <div class="d-flex justify-content-center gap-3 flex-wrap">
+        <a asp-controller="Customer" asp-action="Index" class="btn btn-primary btn-lg px-4 fw-semibold">
+            <i class="fa fa-users me-2"></i>Customers
+        </a>
+    </div>
+</div>

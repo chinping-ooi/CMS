@@ -1,0 +1,402 @@
+@using System.Text.Encodings.Web
+@model IEnumerable<CMS.Models.Customer>
+@{
+    ViewData["Title"] = "Customer Directory";
+}
+
+<div class="container-fluid p-0">
+    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+        <div>
+            <h3 class="fw-bold mb-1 text-dark">Customer Directory</h3>
+            <p class="text-muted mb-0">Manage customer records, add new profiles, modify details, and delete entries.
+            </p>
+        </div>
+        <div>
+            <button class="btn btn-action px-4 fw-semibold" data-bs-toggle="modal" data-bs-target="#addModal">
+                + New Customer
+            </button>
+        </div>
+    </div>
+
+    @if (ViewBag.DbError != null)
+    {
+        <div class="alert alert-warning alert-dismissible fade show mb-4" role="alert">
+            <div class="d-flex align-items-center">
+                <i class="fa fa-exclamation-triangle-fill fs-4 me-3 text-warning"></i>
+                <div>
+                    <strong>Database Connection Notice:</strong> Could not connect to PostgreSQL database
+                    (<code>cms_db</code>).
+                    <div class="small text-muted mt-1">Running in fallback mode with sample customer records. All Add, Edit,
+                        and Delete operations will work in memory.
+                    </div>
+                </div>
+            </div>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    }
+
+    <div class="card border-0">
+        <div
+            class="card-header bg-white py-3 border rounded-0 d-flex align-items-center justify-content-between flex-wrap gap-2 mb-2">
+            <div class="input-group" style="max-width: 380px;">
+                <span class="input-group-text bg-light border-end-0">
+                    <i class="fa fa-search text-muted"></i>
+                </span>
+                <input type="text" id="searchInput" class="form-control bg-light border-start-0 ps-0"
+                       placeholder="Search by name, email, city...">
+            </div>
+            <div class="text-muted small">
+                Total Customers: @(Model?.Count() ?? 0)
+            </div>
+        </div>
+
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="ui celled table rounded-0" id="customerTable">
+                    <thead>
+                        <tr>
+                            <th scope="col" class="ps-4">ID</th>
+                            <th scope="col">Company Name</th>
+                            <th scope="col">Email</th>
+                            <th scope="col">Phone</th>
+                            <th scope="col">Status</th>
+                            <th scope="col" class="text-end pe-4">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="customerTableBody">
+                        @if (Model != null && Model.Any())
+                        {
+                            int row = 1;
+                            @foreach (var item in Model)
+                            {
+                                <tr id="row-@item.Customer_Id">
+                                    <td class="ps-4 fw-semibold text-secondary">#@row</td>
+                                    <td>
+                                        <span class="fw-bold text-dark customer-name">@item.Name</span>
+                                    </td>
+                                    <td>
+                                        <span class="text-muted">@(string.IsNullOrEmpty(item.Email) ? "-" : item.Email)</span>
+                                    </td>
+                                    <td>
+                                        <span class="text-muted">@(string.IsNullOrEmpty(item.Phone) ? "-" : item.Phone)</span>
+                                    </td>
+                                    <td>
+                                        <span
+                                        class="badge @(item.Customer_Status == "Active" ? "bg-success bg-opacity-10 text-success" : item.Customer_Status == "Pending" ? "bg-warning bg-opacity-10 text-warning" : "bg-secondary bg-opacity-10 text-secondary") fw-semibold px-2 py-1">@item.Customer_Status</span>
+                                    </td>
+                                    <td class="text-end pe-4">
+                                        <button class="btn btn-sm btn-action fw-semibold"
+                                                onclick="openEditModal(@item.Customer_Id)">
+                                            <i class="fa-regular fa-pen-to-square"></i>
+                                        </button>
+                                        <button type="button" class="btn btn-sm btn-delete fw-semibold"
+                                                onclick="deleteCustomer(@item.Customer_Id)">
+                                            <i class="fa-solid fa-trash-can"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                                row++;
+                            }
+                        }
+                        else
+                        {
+                            <tr id="noDataRow">
+                                <td colspan="6" class="text-center py-5 text-muted">
+                                    <i class="fa fa-people fs-1 d-block text-secondary mb-2"></i>
+                                    No customers found. Click "Add Customer" to create one.
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ========================================== -->
+<!-- ADD CUSTOMER MODAL (MVC POST: Customer/Create) -->
+<!-- ========================================== -->
+<div class="modal fade" id="addModal" tabindex="-1" aria-labelledby="addModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content border-0">
+            <div class="modal-header px-4 py-3">
+                <h5 class="modal-title fw-bold" id="addModalLabel">
+                    Add New Customer
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="addCustomerForm" asp-action="Create" asp-controller="Customer" method="post" novalidate>
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="Created_By" value="Admin" />
+                <input type="hidden" name="Updated_By" value="Admin" />
+                <div class="modal-body px-4 py-3">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Company Name <span class="text-danger">*</span>
+                            </label>
+                            <input type="text" name="Name" class="form-control" placeholder="Acme Corporation" required
+                                   data-validation-message="Company name is required.">
+                            <div class="invalid-feedback mt-1">Company name is required.</div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Email Address <span class="text-danger">*</span>
+                            </label>
+                            <input type="email" name="Email" class="form-control" placeholder="contact@example.com"
+                                   required data-validation-message="Email address is required.">
+                            <div class="invalid-feedback mt-1">Email address is required.</div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Phone Number <span class="text-danger">*</span>
+                            </label>
+                            <input type="text" name="Phone" class="form-control" placeholder="+1 555-0199" required
+                                   data-validation-message="Phone number is required.">
+                            <div class="invalid-feedback mt-1">Phone number is required.</div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Customer Status</label>
+                            <select name="Customer_Status" class="form-select">
+                                <option value="Active">Active</option>
+                                <option value="Pending">Pending</option>
+                                <option value="Inactive">Inactive</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Record Type</label>
+                            <select name="Record_Typ" class="form-select">
+                                <option value="1">Standard (1)</option>
+                                <option value="2">VIP (2)</option>
+                                <option value="3">Corporate (3)</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Country</label>
+                            <input type="text" name="Country" class="form-control" placeholder="United States">
+                        </div>
+
+                        <div class="col-12">
+                            <label class="form-label fw-semibold">Street Address</label>
+                            <input type="text" name="Address" class="form-control"
+                                   placeholder="123 Market Street, Suite 400">
+                        </div>
+
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold">City</label>
+                            <input type="text" name="City" class="form-control" placeholder="San Francisco">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold">State / Province</label>
+                            <input type="text" name="State" class="form-control" placeholder="CA">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold">Postal Code</label>
+                            <input type="text" name="Postal_Code" class="form-control" placeholder="94105">
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light px-4 py-3">
+                    <button type="button" class="btn btn-delete px-4 fw-semibold"
+                            data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-action px-4 fw-semibold">
+                        Submit
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- ========================================== -->
+<!-- MODIFY / EDIT CUSTOMER MODAL (MVC POST: Customer/Edit) -->
+<!-- ========================================== -->
+<div class="modal fade" id="editModal" tabindex="-1" aria-labelledby="editModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content border-0">
+            <div class="modal-header px-4 py-3">
+                <h5 class="modal-title fw-bold" id="editModalLabel">
+                    Modify Customer
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="editCustomerForm" asp-action="Edit" asp-controller="Customer" method="post" novalidate>
+                @Html.AntiForgeryToken()
+                <div class="modal-body px-4 py-3">
+                    <input type="hidden" name="Customer_Id" id="editCustomerId" />
+                    <input type="hidden" name="Created_By" id="editCreatedBy" />
+                    <input type="hidden" name="Created_Date" id="editCreatedDate" />
+                    <input type="hidden" name="Created_Loc" id="editCreatedLoc" />
+                    <input type="hidden" name="Updated_By" id="editUpdatedBy" value="Admin" />
+                    <input type="hidden" name="Updated_Date" id="editUpdatedDate" />
+                    <input type="hidden" name="Updated_Loc" id="editUpdatedLoc" />
+
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Company Name <span class="text-danger">*</span>
+                            </label>
+                            <input type="text" name="Name" id="editName" class="form-control" required
+                                   data-validation-message="Company name is required.">
+                            <div class="invalid-feedback mt-1">Company name is required.</div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Email Address <span class="text-danger">*</span>
+                            </label>
+                            <input type="email" name="Email" id="editEmail" class="form-control" required
+                                   data-validation-message="Email address is required.">
+                            <div class="invalid-feedback mt-1">Email address is required.</div>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Phone Number</label>
+                            <input type="text" name="Phone" id="editPhone" class="form-control" required
+                                   data-validation-message="Phone number is required.">
+                            <div class="invalid-feedback mt-1">Phone number is required.</div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Customer Status</label>
+                            <select name="Customer_Status" id="editCustomerStatus" class="form-select">
+                                <option value="Active">Active</option>
+                                <option value="Pending">Pending</option>
+                                <option value="Inactive">Inactive</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Record Type</label>
+                            <select name="Record_Typ" id="editRecordTyp" class="form-select">
+                                <option value="1">Standard (1)</option>
+                                <option value="2">VIP (2)</option>
+                                <option value="3">Corporate (3)</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Country</label>
+                            <input type="text" name="Country" id="editCountry" class="form-control">
+                        </div>
+
+                        <div class="col-12">
+                            <label class="form-label fw-semibold">Street Address</label>
+                            <input type="text" name="Address" id="editAddress" class="form-control">
+                        </div>
+
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold">City</label>
+                            <input type="text" name="City" id="editCity" class="form-control">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold">State / Province</label>
+                            <input type="text" name="State" id="editState" class="form-control">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold">Postal Code</label>
+                            <input type="text" name="Postal_Code" id="editPostalCode" class="form-control">
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light px-4 py-3">
+                    <button type="button" class="btn btn-delete px-4 fw-semibold"
+                            data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-action px-4 fw-semibold">
+                        Save Changes
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    @Html.AntiForgeryToken()
+    <script>
+        let editModal;
+
+        $(document).ready(function () {
+            editModal = new bootstrap.Modal(document.getElementById('editModal'));
+
+            $('#searchInput').on('keyup', function () {
+                var term = $(this).val().toLowerCase();
+                $('#customerTableBody tr:not(#noDataRow)').each(function () {
+                    var rowText = $(this).text().toLowerCase();
+                    $(this).toggle(rowText.indexOf(term) >= 0);
+                });
+            });
+
+            if (window.formValidation) {
+                window.formValidation.setup('addCustomerForm');
+                window.formValidation.setup('editCustomerForm');
+            }
+        });
+
+        function deleteCustomer(id) {
+            if (!id) return;
+
+            window.showConfirm({
+                title: 'Delete customer',
+                message: 'Are you sure you want to delete this customer?',
+                detail: 'This action cannot be undone.',
+                confirmText: 'Delete'
+            }).then(function (confirmed) {
+                if (!confirmed) {
+                    return;
+                }
+
+                var token = $('input[name="__RequestVerificationToken"]').first().val();
+
+                $.ajax({
+                    url: `/Customer/Delete/${id}`,
+                    type: 'POST',
+                    data: {
+                        __RequestVerificationToken: token
+                    },
+                    success: function () {
+                        window.location.reload();
+                    },
+                    error: function () {
+                        window.showError({
+                            title: 'Delete failed',
+                            message: 'The customer could not be deleted.',
+                            detail: 'Please try again in a moment.'
+                        });
+                    }
+                });
+            });
+        }
+
+        // Open and Populate Modify (Edit) Modal
+        function openEditModal(id) {
+            if (!id) return;
+
+            $.ajax({
+                url: `/api/customers/${id}`,
+                type: 'GET',
+                dataType: 'json',
+                success: function (customer) {
+                    document.getElementById('editCustomerId').value = customer.customerId || customer.customer_Id || customer.customer_id || customer.Customer_Id || '';
+                    document.getElementById('editName').value = customer.name || customer.Name || '';
+                    document.getElementById('editEmail').value = customer.email || customer.Email || '';
+                    document.getElementById('editPhone').value = customer.phone || customer.Phone || '';
+                    document.getElementById('editAddress').value = customer.address || customer.Address || '';
+                    document.getElementById('editCity').value = customer.city || customer.City || '';
+                    document.getElementById('editState').value = customer.state || customer.State || '';
+                    document.getElementById('editPostalCode').value = customer.postalCode || customer.postal_Code || customer.Postal_Code || '';
+                    document.getElementById('editCountry').value = customer.country || customer.Country || '';
+                    document.getElementById('editCustomerStatus').value = customer.customerStatus || customer.customer_Status || customer.Customer_Status || 'Active';
+                    document.getElementById('editRecordTyp').value = customer.recordTyp || customer.record_Typ || customer.Record_Typ || 1;
+                    document.getElementById('editCreatedBy').value = customer.createdBy || customer.created_By || customer.Created_By || 'Admin';
+                    document.getElementById('editCreatedDate').value = customer.createdDate || customer.created_Date || customer.Created_Date || new Date().toISOString();
+                    document.getElementById('editCreatedLoc').value = customer.createdLoc || customer.created_Loc || customer.Created_Loc || '';
+                    document.getElementById('editUpdatedBy').value = customer.updatedBy || customer.updated_By || customer.Updated_By || 'Admin';
+                    document.getElementById('editUpdatedDate').value = new Date().toISOString();
+                    document.getElementById('editUpdatedLoc').value = customer.updatedLoc || customer.updated_Loc || customer.Updated_Loc || '';
+
+                    editModal.show();
+                },
+                error: function () {
+                    window.showError({
+                        title: 'Load failed',
+                        message: 'The customer details could not be loaded.',
+                        detail: 'Please refresh the page and try again.'
+                    });
+                }
+            });
+        }
+    </script>
+}

@@ -1,0 +1,930 @@
+@model CMS.Models.Project
+
+@{
+    ViewData["Title"] = Model.Name;
+}
+
+<style>
+    .kb-topbar {
+        background: #fff;
+        border-bottom: 1px solid #e5e7eb;
+        padding: 15px 20px;
+    }
+
+    .kb-search {
+        width: 260px;
+    }
+
+    .kb-avatar {
+        width: 38px;
+        height: 38px;
+        border-radius: 50%;
+        object-fit: cover;
+    }
+
+    .kb-btn-primary {
+        background: #2f6fed;
+        color: #fff;
+        border-radius: 10px;
+        border: none;
+        font-weight: 500;
+    }
+
+    .kb-btn-primary:hover {
+        background: #1c56d3;
+        color: #fff;
+    }
+
+    .kb-btn-light {
+        background: #fff;
+        border: 1px solid #dee2e6;
+        border-radius: 10px;
+    }
+
+    .kb-board {
+        display: flex;
+        gap: 20px;
+        overflow-x: auto;
+        padding: 20px;
+    }
+
+    .kb-column {
+        min-width: 300px;
+    }
+
+    .kb-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 15px;
+    }
+
+    .kb-title {
+        font-weight: 700;
+        font-size: 15px;
+    }
+
+    .kb-count {
+        background: #edf1f7;
+        color: #777;
+        padding: 2px 8px;
+        border-radius: 20px;
+        font-size: 12px;
+    }
+
+    .kb-add-task {
+        background: #fff;
+        border: 2px dashed #d8d8d8;
+        border-radius: 10px;
+        padding: 12px;
+        color: #777;
+        cursor: pointer;
+        transition: .2s;
+        margin-bottom: 15px;
+    }
+
+    .kb-add-task:hover {
+        background: #f8f9fa;
+    }
+
+    .kb-card {
+        background: #fff;
+        border-radius: 12px;
+        padding: 15px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, .08);
+        margin-bottom: 15px;
+    }
+
+    .kb-dot {
+        width: 10px;
+        height: 10px;
+        background: #2f6fed;
+        border-radius: 50%;
+    }
+
+    .kb-card-footer {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        color: #999;
+        font-size: 13px;
+    }
+
+    .kb-project-summary {
+        padding: 16px 20px 0;
+    }
+
+    .kb-project-description {
+        color: #6b7280;
+        margin-bottom: 10px;
+    }
+
+    .kb-project-meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+
+    .kb-project-tag,
+    .kb-project-collaborator {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        border-radius: 999px;
+        padding: 4px 10px;
+        font-size: 12px;
+    }
+
+    .kb-project-tag {
+        background: color-mix(in srgb, var(--tag-color) 15%, white);
+        color: #374151;
+    }
+
+    .invite-search-dropdown {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        z-index: 1050;
+        background: #fff;
+        border: 1px solid #dee2e6;
+        border-radius: .375rem;
+        max-height: 260px;
+        overflow-y: auto;
+        box-shadow: 0 .5rem 1rem rgba(0,0,0,.1);
+    }
+
+    .invite-search-dropdown .list-group-item {
+        cursor: pointer;
+    }
+
+    .invite-search-dropdown .list-group-item.disabled {
+        cursor: default;
+        opacity: .65;
+    }
+
+    .kb-project-collaborator {
+        background: #f3f4f6;
+        color: #4b5563;
+    }
+</style>
+
+<div class="kb-topbar">
+    <div class="container-fluid">
+        <div class="d-flex justify-content-between align-items-center">
+            <div class="d-flex align-items-center gap-3">
+                <div class="dropdown">
+                    <button class="btn kb-btn-light dropdown-toggle" id="project-name-display" type="button">
+                        @Model.Name
+                    </button>
+                </div>
+
+                <button class="btn kb-btn-light" type="button" id="delete-project-button">
+                    <i class="bi bi-trash"></i>
+                </button>
+
+                <button class="btn kb-btn-primary" type="button" id="new-project-button">
+                    <i class="bi bi-plus-lg"></i>
+                    New Project
+                </button>
+            </div>
+
+            <div class="mt-3" id="project-selection-modal-container"></div>
+
+            <div class="d-flex align-items-center gap-3">
+                <div class="input-group kb-search">
+                    <span class="input-group-text bg-white">
+                        <i class="bi bi-search"></i>
+                    </span>
+                    <input id="task-search-input" type="text" class="form-control" placeholder="Search tasks...">
+                </div>
+
+                <div class="dropdown">
+                    <button class="btn kb-btn-light dropdown-toggle" type="button" id="filter-button" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false">
+                        <i class="bi bi-funnel"></i>
+                        Filter
+                    </button>
+                    <div class="dropdown-menu p-3" id="tag-filter-dropdown" aria-labelledby="filter-button" style="min-width: 240px;">
+                        <div class="mb-2 fw-semibold">Filter by tags</div>
+                        <div id="tag-filter-list" class="d-flex flex-column gap-2"></div>
+                        <div class="d-flex justify-content-between mt-3">
+                            <button type="button" class="btn btn-sm btn-secondary" id="clear-tag-filter-button">Clear</button>
+                            <button type="button" class="btn btn-sm btn-primary" id="apply-tag-filter-button">Apply</button>
+                        </div>
+                    </div>
+                </div>
+
+                <button class="btn kb-btn-primary" type="button" id="invite-button">
+                    <i class="bi bi-person-plus"></i>
+                    Invite
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="kb-project-summary">
+    <p class="kb-project-description" id="project-description">
+        @(!string.IsNullOrWhiteSpace(Model.Description) ? Model.Description : string.Empty)
+    </p>
+
+    <div class="kb-project-meta" id="project-meta">
+        @foreach (var tag in Model.Tags)
+        {
+            <span class="kb-project-tag" style="--tag-color: @(tag.Color ?? "#6f42c1")" data-tag-id="@tag.Id">
+                <i class="bi bi-tag"></i>@tag.Name
+            </span>
+        }
+
+        @foreach (var collaborator in Model.Collaborators)
+        {
+            <span class="kb-project-collaborator" data-user-id="@collaborator.UserId">
+                <i class="bi bi-person"></i>@collaborator.User.FullName
+            </span>
+        }
+    </div>
+</div>
+
+<div class="modal fade" id="projectSelectionModal" tabindex="-1" aria-labelledby="projectSelectionModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="projectSelectionModalLabel">Select project</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div id="project-selection-list" class="list-group"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="kb-board" id="project-board" data-project-id="@Model.Id">
+    @for (var index = 0; index < Model.Columns.Count; index++)
+    {
+        var column = Model.Columns.ElementAt(index);
+        var tasks = Model.Tasks.Where(task => task.ColumnId == column.Id).ToList();
+
+        <div class="kb-column">
+            <div class="kb-header">
+                <div class="d-flex align-items-center gap-2">
+                    <span class="kb-title">@column.Name</span>
+                    <span class="kb-count">@tasks.Count</span>
+                </div>
+                <i class="bi bi-three-dots-vertical"></i>
+            </div>
+
+            <div class="kb-add-task">
+                <i class="bi bi-plus-square me-2"></i>
+                Add new task (Shift + @(index + 1))
+            </div>
+
+            @foreach (var task in tasks)
+            {
+                <div class="kb-card">
+                    <div class="d-flex justify-content-between">
+                        <div class="kb-dot"></div>
+                        <i class="bi bi-three-dots-vertical text-muted"></i>
+                    </div>
+                    <h6 class="mt-3 fw-bold">@task.Title</h6>
+                    <div class="kb-card-footer mt-4">
+                        <span>
+                            <i class="bi bi-calendar3"></i>
+                            @(task.DueDate?.ToString("yyyy-MM-dd") ?? "No date")
+                        </span>
+                        <i class="bi bi-person-circle fs-5"></i>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+</div>
+
+<div class="modal fade" id="deleteProjectModal" tabindex="-1" aria-labelledby="deleteProjectModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="deleteProjectModalLabel">Delete project</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                Are you sure you want to delete this project? This action cannot be undone.
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-danger" id="confirm-delete-project-button">Delete</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="inviteCollaboratorModal" tabindex="-1" aria-labelledby="inviteCollaboratorModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="inviteCollaboratorModalLabel">Invite collaborator</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3 position-relative">
+                    <label for="invite-user-search" class="form-label">User email or name</label>
+                    <input type="text" id="invite-user-search" class="form-control" placeholder="Search users..." autocomplete="off">
+                    <div id="invite-user-results" class="list-group invite-search-dropdown"></div>
+                </div>
+                <div class="mb-3">
+                    <div id="selected-collaborators" class="d-flex flex-wrap gap-2"></div>
+                </div>
+                <div class="mb-3">
+                    <div class="fw-semibold mb-2">Existing collaborators</div>
+                    <div id="existing-collaborators-list" class="list-group"></div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="invite-submit-button">Submit</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="inviteConfirmModal" tabindex="-1" aria-labelledby="inviteConfirmModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="inviteConfirmModalLabel">Confirm invitation</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" id="invite-confirm-body">
+                Are you sure you want to invite the selected collaborators?
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Back</button>
+                <button type="button" class="btn btn-primary" id="confirm-invite-button">Confirm</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const boardContainer = document.getElementById('project-board');
+    const projectNameDisplay = document.getElementById('project-name-display');
+    const projectDescription = document.getElementById('project-description');
+    const projectMeta = document.getElementById('project-meta');
+    const tagFilterList = document.getElementById('tag-filter-list');
+    const tagChipsContainer = document.getElementById('tag-chips-container');
+    const taskSearchInput = document.getElementById('task-search-input');
+    const filterButton = document.getElementById('filter-button');
+    const clearTagFilterButton = document.getElementById('clear-tag-filter-button');
+    const applyTagFilterButton = document.getElementById('apply-tag-filter-button');
+    const deleteProjectButton = document.getElementById('delete-project-button');
+    const newProjectButton = document.getElementById('new-project-button');
+    const inviteButton = document.getElementById('invite-button');
+    const deleteProjectModal = document.getElementById('deleteProjectModal');
+    const confirmDeleteProjectButton = document.getElementById('confirm-delete-project-button');
+    const inviteCollaboratorModal = document.getElementById('inviteCollaboratorModal');
+    const inviteUserSearch = document.getElementById('invite-user-search');
+    const inviteUserResults = document.getElementById('invite-user-results');
+    const selectedCollaboratorsContainer = document.getElementById('selected-collaborators');
+    const inviteSubmitButton = document.getElementById('invite-submit-button');
+    const confirmInviteButton = document.getElementById('confirm-invite-button');
+    const inviteConfirmModal = document.getElementById('inviteConfirmModal');
+    const inviteConfirmBody = document.getElementById('invite-confirm-body');
+    const existingCollaboratorsList = document.getElementById('existing-collaborators-list');
+    const projectSelectionModal = document.getElementById('projectSelectionModal');
+    const projectSelectionList = document.getElementById('project-selection-list');
+
+    let projectData = null;
+    let selectedTagIds = new Set();
+    let existingCollaboratorIds = new Set();
+    let searchTerm = '';
+    let projectSelectionLoaded = false;
+
+    async function loadProjectData() {
+        if (!boardContainer) {
+            return;
+        }
+
+        const projectId = boardContainer.dataset.projectId;
+        try {
+            const response = await fetch(`/api/projects/${projectId}`);
+            if (!response.ok) {
+                throw new Error('Unable to load project data');
+            }
+
+            projectData = await response.json();
+            renderProject(projectData);
+        } catch (error) {
+            console.error(error);
+        }
+    }
+
+    function renderProject(project) {
+        existingCollaboratorIds = new Set((project.collaborators || []).map(collaborator => String(collaborator.userId).toLowerCase()));
+
+        if (projectNameDisplay) {
+            projectNameDisplay.textContent = project.name || 'Project';
+        }
+
+        if (projectDescription) {
+            projectDescription.textContent = project.description || '';
+        }
+
+        if (projectMeta) {
+            projectMeta.innerHTML = '';
+
+            const filterChipContainer = document.createElement('div');
+            filterChipContainer.id = 'tag-chips-container';
+            filterChipContainer.className = 'd-flex flex-wrap gap-2 mb-2';
+            projectMeta.appendChild(filterChipContainer);
+
+            (project.tags || []).forEach(tag => {
+                const badge = document.createElement('span');
+                badge.className = 'kb-project-tag';
+                badge.style.setProperty('--tag-color', tag.color || '#6f42c1');
+                badge.dataset.tagId = tag.id;
+                badge.innerHTML = `<i class="bi bi-tag"></i>${tag.name}`;
+                badge.addEventListener('click', () => {
+                    if (selectedTagIds.has(tag.id)) {
+                        selectedTagIds.delete(tag.id);
+                    } else {
+                        selectedTagIds.add(tag.id);
+                    }
+                    updateTaskBoard();
+                    renderTagFilterMenu(project.tags || []);
+                    badge.classList.toggle('active', selectedTagIds.has(tag.id));
+                });
+                badge.classList.toggle('active', selectedTagIds.has(tag.id));
+                projectMeta.appendChild(badge);
+            });
+
+            (project.collaborators || []).forEach(collaborator => {
+                const badge = document.createElement('span');
+                badge.className = 'kb-project-collaborator';
+                badge.innerHTML = `<i class="bi bi-person"></i>${collaborator.fullName}`;
+                projectMeta.appendChild(badge);
+            });
+        }
+
+        updateTaskBoard();
+    }
+
+    function getFilteredTasks() {
+        const tasks = projectData?.tasks || [];
+        return tasks.filter(task => {
+            const matchesSearch = !searchTerm || task.title.toLowerCase().includes(searchTerm.toLowerCase());
+            const matchesTag = selectedTagIds.size === 0 || (task.tags || []).some(tag => selectedTagIds.has(tag.id));
+            return matchesSearch && matchesTag;
+        });
+    }
+
+    function renderTagFilterMenu(tags) {
+        if (!tagFilterList) {
+            return;
+        }
+
+        tagFilterList.innerHTML = '';
+
+        tags.forEach(tag => {
+            const item = document.createElement('div');
+            item.className = 'form-check';
+            item.innerHTML = `
+                <input class="form-check-input" type="checkbox" value="${tag.id}" id="tag-filter-${tag.id}" ${selectedTagIds.has(tag.id) ? 'checked' : ''}>
+                <label class="form-check-label" for="tag-filter-${tag.id}">${tag.name}</label>
+            `;
+            const checkbox = item.querySelector('input');
+            checkbox.addEventListener('change', () => {
+                if (checkbox.checked) {
+                    selectedTagIds.add(tag.id);
+                } else {
+                    selectedTagIds.delete(tag.id);
+                }
+                updateTaskBoard();
+                renderTagChips();
+            });
+            tagFilterList.appendChild(item);
+        });
+    }
+
+    function renderTagChips() {
+        if (!tagChipsContainer) {
+            return;
+        }
+
+        tagChipsContainer.innerHTML = '';
+
+        selectedTagIds.forEach(tagId => {
+            const tag = (projectData?.tags || []).find(t => t.id === tagId);
+            if (!tag) return;
+
+            const badge = document.createElement('span');
+            badge.className = 'badge bg-secondary rounded-pill d-inline-flex align-items-center gap-2';
+            badge.textContent = tag.name;
+
+            const removeButton = document.createElement('button');
+            removeButton.type = 'button';
+            removeButton.className = 'btn-close btn-close-white btn-sm ms-2';
+            removeButton.addEventListener('click', () => {
+                selectedTagIds.delete(tagId);
+                updateTaskBoard();
+                renderTagFilterMenu(projectData.tags || []);
+                renderTagChips();
+            });
+
+            badge.appendChild(removeButton);
+            tagChipsContainer.appendChild(badge);
+        });
+    }
+
+    function updateTaskBoard() {
+        if (!boardContainer || !projectData) {
+            return;
+        }
+
+        boardContainer.innerHTML = '';
+        const columns = projectData.columns || [];
+        const tasks = getFilteredTasks();
+
+        columns.forEach((column, index) => {
+            const columnTasks = tasks.filter(task => task.columnId === column.id);
+            const columnElement = document.createElement('div');
+            columnElement.className = 'kb-column';
+            columnElement.innerHTML = `
+                <div class="kb-header">
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="kb-title">${column.name}</span>
+                        <span class="kb-count">${columnTasks.length}</span>
+                    </div>
+                    <i class="bi bi-three-dots-vertical"></i>
+                </div>
+                <div class="kb-add-task">
+                    <i class="bi bi-plus-square me-2"></i>
+                    Add new task (Shift + ${index + 1})
+                </div>
+            `;
+
+            columnTasks.forEach(task => {
+                const card = document.createElement('div');
+                card.className = 'kb-card';
+                const dueDate = task.dueDate ? new Date(task.dueDate).toLocaleDateString() : 'No date';
+                const assignedUser = task.assignedUserName ? `<span>${task.assignedUserName}</span>` : '<span>No assignee</span>';
+                card.innerHTML = `
+                    <div class="d-flex justify-content-between">
+                        <div class="kb-dot"></div>
+                        <i class="bi bi-three-dots-vertical text-muted"></i>
+                    </div>
+                    <h6 class="mt-3 fw-bold">${task.title}</h6>
+                    <div class="kb-card-footer mt-4">
+                        <span>
+                            <i class="bi bi-calendar3"></i>
+                            ${dueDate}
+                        </span>
+                        ${assignedUser}
+                    </div>
+                `;
+                columnElement.appendChild(card);
+            });
+
+            boardContainer.appendChild(columnElement);
+        });
+    }
+
+    async function loadProjectSelection() {
+        if (!projectSelectionList) {
+            return;
+        }
+
+        const response = await fetch('/api/projects');
+        if (!response.ok) {
+            console.error('Unable to load projects');
+            return;
+        }
+
+        const projects = await response.json();
+        projectSelectionList.innerHTML = '';
+
+        projects.forEach(project => {
+            const item = document.createElement('button');
+            item.type = 'button';
+            item.className = 'list-group-item list-group-item-action';
+            item.textContent = project.name;
+            item.addEventListener('click', () => {
+                window.location.href = `/Task?id=${project.id}`;
+            });
+            projectSelectionList.appendChild(item);
+        });
+
+        projectSelectionLoaded = true;
+    }
+
+    async function openProjectSelection() {
+        if (!projectSelectionModal) {
+            return;
+        }
+
+        const modal = new bootstrap.Modal(projectSelectionModal);
+        modal.show();
+
+        if (!projectSelectionLoaded) {
+            await loadProjectSelection();
+        }
+    }
+
+    function goToNewProjectPage() {
+        window.location.href = '/Project';
+    }
+
+    async function deleteProject() {
+        if (!projectData) {
+            return;
+        }
+
+        const response = await fetch(`/api/projects/${projectData.id}`, {
+            method: 'DELETE',
+        });
+
+        if (!response.ok) {
+            console.error('Failed to delete project');
+            return;
+        }
+
+        window.location.href = '/Project';
+    }
+
+    const selectedCollaborators = new Map();
+
+    async function searchUsers(query) {
+        inviteUserResults.innerHTML = '';
+        inviteUserResults.hidden = false;
+
+        if (!query.trim()) {
+            const hint = document.createElement('button');
+            hint.type = 'button';
+            hint.className = 'list-group-item list-group-item-action disabled';
+            hint.textContent = 'Start typing a name or email to find users.';
+            inviteUserResults.appendChild(hint);
+            return;
+        }
+
+        const response = await fetch(`/api/users/search?q=${encodeURIComponent(query)}`);
+        if (!response.ok) {
+            console.error('Failed to search users');
+            return;
+        }
+
+        const users = await response.json();
+        let resultsFound = false;
+        let allExcluded = true;
+
+        users.forEach(user => {
+            const normalizedUserId = String(user.id).toLowerCase();
+            if (selectedCollaborators.has(user.id) || existingCollaboratorIds.has(normalizedUserId)) {
+                return;
+            }
+
+            allExcluded = false;
+            resultsFound = true;
+            const item = document.createElement('button');
+            item.type = 'button';
+            item.className = 'list-group-item list-group-item-action';
+            item.textContent = `${user.name} (${user.email})`;
+            item.addEventListener('click', () => addSelectedCollaborator(user));
+            inviteUserResults.appendChild(item);
+        });
+
+        if (!resultsFound) {
+            const empty = document.createElement('button');
+            empty.type = 'button';
+            empty.className = 'list-group-item list-group-item-action disabled';
+            empty.textContent = allExcluded
+                ? 'All matching users are already collaborators.'
+                : 'No matching users found.';
+            inviteUserResults.appendChild(empty);
+        }
+    }
+
+    function renderSelectedCollaborators() {
+        if (!selectedCollaboratorsContainer) {
+            return;
+        }
+
+        selectedCollaboratorsContainer.innerHTML = '';
+
+        selectedCollaborators.forEach(user => {
+            const badge = document.createElement('span');
+            badge.className = 'badge bg-primary rounded-pill d-inline-flex align-items-center gap-2';
+            badge.textContent = `${user.name} (${user.email})`;
+            badge.dataset.userId = user.id;
+
+            const removeButton = document.createElement('button');
+            removeButton.type = 'button';
+            removeButton.className = 'btn-close btn-close-white btn-sm ms-2';
+            removeButton.addEventListener('click', () => {
+                selectedCollaborators.delete(user.id);
+                renderSelectedCollaborators();
+            });
+
+            badge.appendChild(removeButton);
+            selectedCollaboratorsContainer.appendChild(badge);
+        });
+    }
+
+    function renderExistingCollaborators() {
+        if (!existingCollaboratorsList || !projectData) {
+            return;
+        }
+
+        existingCollaboratorsList.innerHTML = '';
+
+        const collaborators = projectData.collaborators || [];
+        if (!collaborators.length) {
+            const empty = document.createElement('div');
+            empty.className = 'text-muted small';
+            empty.textContent = 'No existing collaborators in this project.';
+            existingCollaboratorsList.appendChild(empty);
+            return;
+        }
+
+        collaborators.forEach(collaborator => {
+            const item = document.createElement('div');
+            item.className = 'list-group-item d-flex align-items-center gap-3';
+
+            const avatar = document.createElement('div');
+            avatar.className = 'kb-avatar d-flex align-items-center justify-content-center bg-secondary text-white';
+            avatar.textContent = collaborator.fullName.split(' ').map(part => part[0]).join('').slice(0, 2).toUpperCase();
+
+            const details = document.createElement('div');
+            details.className = 'flex-grow-1';
+            details.innerHTML = `<div class="fw-semibold">${collaborator.fullName}</div><div class="text-muted small">${collaborator.email}</div>`;
+
+            item.appendChild(avatar);
+            item.appendChild(details);
+            existingCollaboratorsList.appendChild(item);
+        });
+    }
+
+    function isExistingProjectCollaborator(userId) {
+        return existingCollaboratorIds.has(userId);
+    }
+
+    function addSelectedCollaborator(user) {
+        if (selectedCollaborators.has(user.id)) {
+            return;
+        }
+
+        selectedCollaborators.set(user.id, user);
+        renderSelectedCollaborators();
+        inviteUserResults.innerHTML = '';
+        inviteUserSearch.value = '';
+    }
+
+    function showInviteModal() {
+        if (!inviteCollaboratorModal) {
+            return;
+        }
+
+        const modal = new bootstrap.Modal(inviteCollaboratorModal);
+        modal.show();
+
+        renderSelectedCollaborators();
+        renderExistingCollaborators();
+    }
+
+    async function submitInviteSelection() {
+        if (!selectedCollaborators.size) {
+            alert('Select at least one collaborator before submitting.');
+            return;
+        }
+
+        if (!inviteConfirmModal || !inviteConfirmBody) {
+            return;
+        }
+
+        const names = Array.from(selectedCollaborators.values()).map(user => user.name);
+        inviteConfirmBody.textContent = `Invite ${names.length} collaborator(s): ${names.join(', ')}?`;
+
+        const modal = new bootstrap.Modal(inviteConfirmModal);
+        modal.show();
+    }
+
+    async function confirmInvite() {
+        if (!projectData || !selectedCollaborators.size) {
+            return;
+        }
+
+        const selectedUsers = Array.from(selectedCollaborators.values());
+        const results = await Promise.all(selectedUsers.map(user =>
+            $.ajax({
+                url: `/api/projects/${projectData.id}/collaborators`,
+                method: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify({ userId: user.id, role: 'member' })
+            }).then(() => ({ user, success: true }))
+              .catch((jqXHR, textStatus, errorThrown) => ({
+                  user,
+                  success: false,
+                  error: jqXHR?.responseText || errorThrown || textStatus || 'Unknown error'
+              }))
+        ));
+
+        const failed = results.filter(result => !result.success);
+        const successful = results.filter(result => result.success);
+
+        const inviteConfirmInstance = bootstrap.Modal.getInstance(inviteConfirmModal);
+        inviteConfirmInstance?.hide();
+
+        if (successful.length) {
+            successful.forEach(result => selectedCollaborators.delete(result.user.id));
+            renderSelectedCollaborators();
+        }
+
+        if (failed.length) {
+            const errorMessages = failed.map(result => `${result.user.name}: ${result.error}`);
+            alert(`Some collaborators could not be invited.\n${errorMessages.join('\n')}`);
+            return;
+        }
+
+        const inviteModalInstance = bootstrap.Modal.getInstance(inviteCollaboratorModal);
+        inviteModalInstance?.hide();
+        selectedCollaborators.clear();
+
+        await loadProjectData();
+    }
+
+    function showDeleteModal() {
+        if (!deleteProjectModal) {
+            return;
+        }
+
+        const modal = new bootstrap.Modal(deleteProjectModal);
+        modal.show();
+    }
+
+    if (taskSearchInput) {
+        taskSearchInput.addEventListener('input', event => {
+            searchTerm = event.target.value;
+            updateTaskBoard();
+        });
+    }
+
+    if (filterButton) {
+        filterButton.addEventListener('click', () => {
+            renderTagFilterMenu(projectData?.tags || []);
+        });
+    }
+
+    if (clearTagFilterButton) {
+        clearTagFilterButton.addEventListener('click', () => {
+            selectedTagIds.clear();
+            renderTagFilterMenu(projectData?.tags || []);
+            renderTagChips();
+            updateTaskBoard();
+        });
+    }
+
+    if (applyTagFilterButton) {
+        applyTagFilterButton.addEventListener('click', () => {
+            updateTaskBoard();
+            const filterDropdown = bootstrap.Dropdown.getOrCreateInstance(filterButton);
+            filterDropdown.hide();
+        });
+    }
+
+    if (deleteProjectButton) {
+        deleteProjectButton.addEventListener('click', showDeleteModal);
+    }
+
+    if (confirmDeleteProjectButton) {
+        confirmDeleteProjectButton.addEventListener('click', deleteProject);
+    }
+
+    if (newProjectButton) {
+        newProjectButton.addEventListener('click', goToNewProjectPage);
+    }
+
+    if (inviteButton) {
+        inviteButton.addEventListener('click', showInviteModal);
+    }
+
+    if (inviteSubmitButton) {
+        inviteSubmitButton.addEventListener('click', submitInviteSelection);
+    }
+
+    if (confirmInviteButton) {
+        confirmInviteButton.addEventListener('click', confirmInvite);
+    }
+
+    if (projectNameDisplay) {
+        projectNameDisplay.addEventListener('click', openProjectSelection);
+    }
+
+    if (inviteUserSearch) {
+        inviteUserSearch.addEventListener('input', event => {
+            searchUsers(event.target.value);
+        });
+    }
+
+    document.addEventListener('DOMContentLoaded', loadProjectData);
+</script>
