@@ -15,6 +15,7 @@ public class AppDbContext : DbContext
     public DbSet<ProjectTag> ProjectTags { get; set; }
     public DbSet<ProjectCollaborator> ProjectCollaborators { get; set; }
     public DbSet<TaskItem> TaskItems { get; set; }
+    public DbSet<TaskAttachment> TaskAttachments { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -27,7 +28,14 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<ProjectTag>().ToTable("project_tag");
         modelBuilder.Entity<ProjectCollaborator>().ToTable("project_collaborator");
         modelBuilder.Entity<TaskItem>().ToTable("task_item");
+        modelBuilder.Entity<TaskAttachment>().ToTable("task_attachment");
         modelBuilder.Entity<TaskItemTag>().ToTable("task_item_tag");
+
+        modelBuilder.Entity<TaskAttachment>()
+            .HasOne(attachment => attachment.Task)
+            .WithMany(task => task.Attachments)
+            .HasForeignKey(attachment => attachment.TaskId)
+            .OnDelete(DeleteBehavior.Cascade);
 
         modelBuilder.Entity<ProjectCollaborator>().HasKey(collaborator => new
         {

@@ -1,7 +1,16 @@
-@model CMS.Models.Project
+@model CMS.Models.Project?
 
 @{
-    ViewData["Title"] = Model.Name;
+    ViewData["Title"] = Model?.Name ?? "Tasks";
+    var projectCreateModalModel = new Project();
+    projectCreateModalModel.Columns.Add(new ProjectColumn { Name = "TO DO", Position = 0 });
+    projectCreateModalModel.Columns.Add(new ProjectColumn { Name = "IN PROGRESS", Position = 1 });
+    projectCreateModalModel.Columns.Add(new ProjectColumn { Name = "PENDING REVIEW", Position = 2 });
+    projectCreateModalModel.Columns.Add(new ProjectColumn { Name = "PENDING TO DEPLOY", Position = 3 });
+    projectCreateModalModel.Columns.Add(new ProjectColumn { Name = "COMPLETED", Position = 4 });
+    projectCreateModalModel.Tags.Add(new ProjectTag { Name = "FEATURE", Color = "#0d6efd" });
+    projectCreateModalModel.Tags.Add(new ProjectTag { Name = "BUG", Color = "#dc3545" });
+    projectCreateModalModel.Tags.Add(new ProjectTag { Name = "REQUEST", Color = "#198754" });
 }
 
 <style>
@@ -91,8 +100,52 @@
         background: #fff;
         border-radius: 12px;
         padding: 15px;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, .08);
+        border: 1px solid #e5e7eb;
         margin-bottom: 15px;
+    }
+
+    .kb-card-dropdown {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .kb-card-dropdown .btn {
+        color: #6c757d;
+        font-size: 1rem;
+        line-height: 1;
+        padding: 0;
+        min-width: 0;
+        border: none;
+        background: transparent;
+    }
+
+    .kb-card-dropdown .btn::after {
+        display: none !important;
+    }
+
+    .kb-card-dropdown .dropdown-menu {
+        min-width: 170px;
+        padding: 0.3rem;
+        border: 1px solid #e5e7eb;
+        border-radius: 8px;
+        box-shadow: 0 8px 18px rgba(0, 0, 0, 0.08);
+    }
+
+    .kb-card-dropdown .dropdown-item {
+        border-radius: 6px;
+        padding: 0.45rem 0.6rem;
+        font-size: 0.9rem;
+        font-weight: 500;
+    }
+
+    .kb-card-dropdown .dropdown-item:hover {
+        background: #f3f6ff;
+        color: #1c56d3;
+    }
+
+    .kb-column.drag-over {
+        background: #f8f9fa;
     }
 
     .kb-dot {
@@ -114,6 +167,13 @@
         padding: 16px 20px 0;
     }
 
+    .kb-reset-button {
+        font-size: 0.75rem;
+        padding: 0.2rem 0.45rem;
+        min-width: auto;
+        line-height: 1.1;
+    }
+
     .kb-project-description {
         color: #6b7280;
         margin-bottom: 10px;
@@ -123,6 +183,7 @@
         display: flex;
         flex-wrap: wrap;
         gap: 8px;
+        align-items: center;
     }
 
     .kb-project-tag,
@@ -130,14 +191,45 @@
         display: inline-flex;
         align-items: center;
         gap: 6px;
-        border-radius: 999px;
+        border-radius: 0.75rem;
         padding: 4px 10px;
         font-size: 12px;
+        cursor: pointer;
+        transition: transform 0.15s ease, box-shadow 0.15s ease;
     }
 
     .kb-project-tag {
-        background: color-mix(in srgb, var(--tag-color) 15%, white);
+        background: color-mix(in srgb, var(--tag-color) 20%, white 80%);
         color: #374151;
+        border: 1px solid var(--tag-color);
+        box-shadow: none;
+    }
+
+    .kb-project-tag:hover,
+    .kb-project-tag.active {
+        transform: none;
+    }
+
+    .kb-project-tag-close {
+        width: 1rem;
+        height: 1rem;
+        border: none;
+        background: transparent;
+        color: #4b5563;
+        padding: 0;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        opacity: 0.75;
+    }
+
+    .kb-project-tag-close:hover {
+        opacity: 1;
+    }
+
+    .kb-project-tag-close .bi {
+        font-size: 0.95rem;
     }
 
     .invite-search-dropdown {
@@ -167,16 +259,106 @@
         background: #f3f4f6;
         color: #4b5563;
     }
+
+    .kb-project-selector {
+        min-width: 170px;
+        border-radius: 8px;
+        border: 1px solid #d1d5db;
+        background: #fff;
+        color: #111827;
+        font-weight: 500;
+        padding: 0.45rem 0.7rem;
+        font-size: 0.9rem;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        text-align: left;
+    }
+
+    .kb-project-selector:hover,
+    .kb-project-selector:focus {
+        background: #fff;
+        color: #111827;
+        border-color: #2f6fed;
+        box-shadow: 0 0 0 0.2rem rgba(47, 111, 237, 0.15);
+    }
+
+    .kb-project-selector-menu {
+        min-width: 170px;
+        padding: 0.3rem;
+        border: 1px solid #e5e7eb;
+        border-radius: 8px;
+        box-shadow: 0 8px 18px rgba(0, 0, 0, 0.08);
+    }
+
+    .kb-project-selector-menu .dropdown-item {
+        border-radius: 6px;
+        padding: 0.45rem 0.6rem;
+        font-size: 0.9rem;
+        font-weight: 500;
+    }
+
+    .kb-project-selector-menu .dropdown-item:hover {
+        background: #f3f6ff;
+        color: #1c56d3;
+    }
+
+    .kb-selector-dropdown-title {
+        padding: 0 0.55rem;
+        font-size: 0.9rem;
+    }
+
+    .kb-filter-checkbox {
+        display: flex;
+        align-items: center;
+        gap: 0.55rem;
+        padding: 0.35rem 0.5rem;
+        border-radius: 8px;
+        background: #f8fafc;
+        cursor: pointer;
+        transition: background 0.15s ease;
+    }
+
+    .kb-filter-checkbox:hover {
+        background: #eef2ff;
+    }
+
+    .kb-filter-checkbox-input {
+        width: 1rem;
+        height: 1rem;
+        margin: 0;
+    }
+
+    .kb-filter-checkbox-label {
+        margin: 0;
+        font-size: 0.95rem;
+        font-weight: 500;
+    }
 </style>
 
-<div class="kb-topbar">
-    <div class="container-fluid">
-        <div class="d-flex justify-content-between align-items-center">
-            <div class="d-flex align-items-center gap-3">
+@if (Model == null)
+{
+    <div class="container py-5">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body text-center">
+                <h3 class="mb-3">No projects yet</h3>
+                <p class="mb-4 text-muted">Create your first project to start managing tasks.</p>
+                <button type="button" class="btn btn-primary" onclick="showCreateProjectModal()">Create First Project</button>
+            </div>
+        </div>
+    </div>
+}
+else
+{
+    <div class="kb-topbar">
+        <div class="container-fluid">
+            <div class="d-flex justify-content-between align-items-center">
+            <div class="d-flex align-items-center gap-2">
                 <div class="dropdown">
-                    <button class="btn kb-btn-light dropdown-toggle" id="project-name-display" type="button">
-                        @Model.Name
+                    <button class="btn kb-project-selector dropdown-toggle" id="project-name-display" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        <span>@Model.Name</span>
                     </button>
+                    <ul class="dropdown-menu kb-project-selector-menu" id="project-dropdown-menu" aria-labelledby="project-name-display"></ul>
                 </div>
 
                 <button class="btn kb-btn-light" type="button" id="delete-project-button">
@@ -189,9 +371,7 @@
                 </button>
             </div>
 
-            <div class="mt-3" id="project-selection-modal-container"></div>
-
-            <div class="d-flex align-items-center gap-3">
+            <div class="d-flex align-items-center gap-2">
                 <div class="input-group kb-search">
                     <span class="input-group-text bg-white">
                         <i class="bi bi-search"></i>
@@ -200,17 +380,15 @@
                 </div>
 
                 <div class="dropdown">
-                    <button class="btn kb-btn-light dropdown-toggle" type="button" id="filter-button" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false">
-                        <i class="bi bi-funnel"></i>
-                        Filter
+                    <button class="btn kb-project-selector dropdown-toggle" type="button" id="filter-button" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false">
+                        <span><i class="bi bi-funnel"></i> Filter</span>
                     </button>
-                    <div class="dropdown-menu p-3" id="tag-filter-dropdown" aria-labelledby="filter-button" style="min-width: 240px;">
-                        <div class="mb-2 fw-semibold">Filter by tags</div>
-                        <div id="tag-filter-list" class="d-flex flex-column gap-2"></div>
-                        <div class="d-flex justify-content-between mt-3">
-                            <button type="button" class="btn btn-sm btn-secondary" id="clear-tag-filter-button">Clear</button>
-                            <button type="button" class="btn btn-sm btn-primary" id="apply-tag-filter-button">Apply</button>
+                    <div class="dropdown-menu kb-project-selector-menu" id="tag-filter-dropdown" aria-labelledby="filter-button" style="min-width: 170px;">
+                        <div class="d-flex align-items-center justify-content-between kb-selector-dropdown-title mb-2">
+                            <span class="fw-semibold">Filter by tags</span>
+                            <button type="button" class="btn btn-outline-secondary kb-reset-button" id="clear-tag-filter-button">Reset</button>
                         </div>
+                        <div id="tag-filter-list" class="d-flex flex-column gap-2"></div>
                     </div>
                 </div>
 
@@ -245,23 +423,6 @@
     </div>
 </div>
 
-<div class="modal fade" id="projectSelectionModal" tabindex="-1" aria-labelledby="projectSelectionModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered modal-lg">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="projectSelectionModalLabel">Select project</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <div id="project-selection-list" class="list-group"></div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-            </div>
-        </div>
-    </div>
-</div>
-
 <div class="kb-board" id="project-board" data-project-id="@Model.Id">
     @for (var index = 0; index < Model.Columns.Count; index++)
     {
@@ -277,7 +438,7 @@
                 <i class="bi bi-three-dots-vertical"></i>
             </div>
 
-            <div class="kb-add-task">
+            <div class="kb-add-task" role="button" onclick="showTaskItemModal()">
                 <i class="bi bi-plus-square me-2"></i>
                 Add new task (Shift + @(index + 1))
             </div>
@@ -285,9 +446,17 @@
             @foreach (var task in tasks)
             {
                 <div class="kb-card">
-                    <div class="d-flex justify-content-between">
+                    <div class="d-flex justify-content-between align-items-center">
                         <div class="kb-dot"></div>
-                        <i class="bi bi-three-dots-vertical text-muted"></i>
+                        <div class="dropdown kb-card-dropdown">
+                            <button class="btn p-0" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                <i class="bi bi-three-dots-vertical"></i>
+                            </button>
+                            <ul class="dropdown-menu dropdown-menu-end kb-project-selector-menu">
+                                <li><button class="dropdown-item" type="button">View</button></li>
+                                <li><button class="dropdown-item text-danger" type="button">Remove</button></li>
+                            </ul>
+                        </div>
                     </div>
                     <h6 class="mt-3 fw-bold">@task.Title</h6>
                     <div class="kb-card-footer mt-4">
@@ -316,6 +485,24 @@
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
                 <button type="button" class="btn btn-danger" id="confirm-delete-project-button">Delete</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="deleteTaskModal" tabindex="-1" aria-labelledby="deleteTaskModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="deleteTaskModalLabel">Delete task</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" id="delete-task-body">
+                Are you sure you want to delete this task?
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-danger" id="confirm-delete-task-button">Delete</button>
             </div>
         </div>
     </div>
@@ -367,6 +554,10 @@
         </div>
     </div>
 </div>
+}
+
+@await Html.PartialAsync("_CreateProjectModal", projectCreateModalModel)
+@await Html.PartialAsync("_TaskItemModal")
 
 <script>
     const boardContainer = document.getElementById('project-board');
@@ -374,16 +565,17 @@
     const projectDescription = document.getElementById('project-description');
     const projectMeta = document.getElementById('project-meta');
     const tagFilterList = document.getElementById('tag-filter-list');
-    const tagChipsContainer = document.getElementById('tag-chips-container');
+    const clearTagFilterButton = document.getElementById('clear-tag-filter-button');
     const taskSearchInput = document.getElementById('task-search-input');
     const filterButton = document.getElementById('filter-button');
-    const clearTagFilterButton = document.getElementById('clear-tag-filter-button');
-    const applyTagFilterButton = document.getElementById('apply-tag-filter-button');
     const deleteProjectButton = document.getElementById('delete-project-button');
     const newProjectButton = document.getElementById('new-project-button');
     const inviteButton = document.getElementById('invite-button');
     const deleteProjectModal = document.getElementById('deleteProjectModal');
     const confirmDeleteProjectButton = document.getElementById('confirm-delete-project-button');
+    const deleteTaskModal = document.getElementById('deleteTaskModal');
+    const confirmDeleteTaskButton = document.getElementById('confirm-delete-task-button');
+    const deleteTaskBody = document.getElementById('delete-task-body');
     const inviteCollaboratorModal = document.getElementById('inviteCollaboratorModal');
     const inviteUserSearch = document.getElementById('invite-user-search');
     const inviteUserResults = document.getElementById('invite-user-results');
@@ -393,14 +585,27 @@
     const inviteConfirmModal = document.getElementById('inviteConfirmModal');
     const inviteConfirmBody = document.getElementById('invite-confirm-body');
     const existingCollaboratorsList = document.getElementById('existing-collaborators-list');
-    const projectSelectionModal = document.getElementById('projectSelectionModal');
-    const projectSelectionList = document.getElementById('project-selection-list');
+    const projectDropdownMenu = document.getElementById('project-dropdown-menu');
+    const projectModalElement = document.getElementById('projectModal');
+    const taskItemModalElement = document.getElementById('taskItemModal');
+    const taskTitleInput = document.getElementById('task-title');
+    const taskDescriptionInput = document.getElementById('task-description');
+    const taskBoardTypeInput = document.getElementById('task-board-type');
+    const taskColumnSelect = document.getElementById('task-column');
+    const taskStartDateInput = document.getElementById('task-start-date');
+    const taskDueDateInput = document.getElementById('task-due-date');
+    const taskAssignedToSelect = document.getElementById('task-assigned-to');
+    const taskPrioritySelect = document.getElementById('task-priority');
+    const taskCategorySelect = document.getElementById('task-category');
+    const saveTaskButton = document.getElementById('save-task-button');
 
     let projectData = null;
     let selectedTagIds = new Set();
     let existingCollaboratorIds = new Set();
     let searchTerm = '';
-    let projectSelectionLoaded = false;
+    let projectDropdownLoaded = false;
+    let tagSelectionInitialized = false;
+    let pendingDeleteTaskId = null;
 
     async function loadProjectData() {
         if (!boardContainer) {
@@ -435,17 +640,38 @@
         if (projectMeta) {
             projectMeta.innerHTML = '';
 
-            const filterChipContainer = document.createElement('div');
-            filterChipContainer.id = 'tag-chips-container';
-            filterChipContainer.className = 'd-flex flex-wrap gap-2 mb-2';
-            projectMeta.appendChild(filterChipContainer);
+            if (!tagSelectionInitialized && !selectedTagIds.size && (project.tags || []).length) {
+                selectedTagIds = new Set((project.tags || []).map(tag => tag.id));
+                tagSelectionInitialized = true;
+            }
 
             (project.tags || []).forEach(tag => {
+                if (!selectedTagIds.has(tag.id)) {
+                    return;
+                }
+
                 const badge = document.createElement('span');
                 badge.className = 'kb-project-tag';
                 badge.style.setProperty('--tag-color', tag.color || '#6f42c1');
                 badge.dataset.tagId = tag.id;
-                badge.innerHTML = `<i class="bi bi-tag"></i>${tag.name}`;
+                badge.innerHTML = `
+                    <i class="bi bi-tag"></i>
+                    <span>${tag.name}</span>
+                `;
+
+                const closeBtn = document.createElement('button');
+                closeBtn.type = 'button';
+                closeBtn.className = 'kb-project-tag-close';
+                closeBtn.innerHTML = '<i class="bi bi-x-lg"></i>';
+                closeBtn.addEventListener('click', event => {
+                    event.stopPropagation();
+                    selectedTagIds.delete(tag.id);
+                    updateTaskBoard();
+                    renderTagFilterMenu(project.tags || []);
+                    renderProject(project);
+                });
+
+                badge.appendChild(closeBtn);
                 badge.addEventListener('click', () => {
                     if (selectedTagIds.has(tag.id)) {
                         selectedTagIds.delete(tag.id);
@@ -454,8 +680,9 @@
                     }
                     updateTaskBoard();
                     renderTagFilterMenu(project.tags || []);
-                    badge.classList.toggle('active', selectedTagIds.has(tag.id));
+                    renderProject(project);
                 });
+
                 badge.classList.toggle('active', selectedTagIds.has(tag.id));
                 projectMeta.appendChild(badge);
             });
@@ -468,14 +695,19 @@
             });
         }
 
+        renderTagFilterMenu(project.tags || []);
         updateTaskBoard();
     }
 
     function getFilteredTasks() {
         const tasks = projectData?.tasks || [];
+        const allTagsSelected = projectData?.tags && selectedTagIds.size === projectData.tags.length;
         return tasks.filter(task => {
             const matchesSearch = !searchTerm || task.title.toLowerCase().includes(searchTerm.toLowerCase());
-            const matchesTag = selectedTagIds.size === 0 || (task.tags || []).some(tag => selectedTagIds.has(tag.id));
+            const taskTags = task.tags || [];
+            const matchesTag = selectedTagIds.size === 0
+                || allTagsSelected
+                || taskTags.some(tag => selectedTagIds.has(tag.id));
             return matchesSearch && matchesTag;
         });
     }
@@ -488,11 +720,12 @@
         tagFilterList.innerHTML = '';
 
         tags.forEach(tag => {
-            const item = document.createElement('div');
-            item.className = 'form-check';
+            const item = document.createElement('label');
+            item.className = 'kb-filter-checkbox';
+            item.htmlFor = `tag-filter-${tag.id}`;
             item.innerHTML = `
-                <input class="form-check-input" type="checkbox" value="${tag.id}" id="tag-filter-${tag.id}" ${selectedTagIds.has(tag.id) ? 'checked' : ''}>
-                <label class="form-check-label" for="tag-filter-${tag.id}">${tag.name}</label>
+                <input class="kb-filter-checkbox-input" type="checkbox" value="${tag.id}" id="tag-filter-${tag.id}" ${selectedTagIds.has(tag.id) ? 'checked' : ''}>
+                <span class="kb-filter-checkbox-label">${tag.name}</span>
             `;
             const checkbox = item.querySelector('input');
             checkbox.addEventListener('change', () => {
@@ -502,39 +735,17 @@
                     selectedTagIds.delete(tag.id);
                 }
                 updateTaskBoard();
-                renderTagChips();
+                renderProject(projectData);
             });
             tagFilterList.appendChild(item);
         });
     }
 
-    function renderTagChips() {
-        if (!tagChipsContainer) {
-            return;
-        }
-
-        tagChipsContainer.innerHTML = '';
-
-        selectedTagIds.forEach(tagId => {
-            const tag = (projectData?.tags || []).find(t => t.id === tagId);
-            if (!tag) return;
-
-            const badge = document.createElement('span');
-            badge.className = 'badge bg-secondary rounded-pill d-inline-flex align-items-center gap-2';
-            badge.textContent = tag.name;
-
-            const removeButton = document.createElement('button');
-            removeButton.type = 'button';
-            removeButton.className = 'btn-close btn-close-white btn-sm ms-2';
-            removeButton.addEventListener('click', () => {
-                selectedTagIds.delete(tagId);
-                updateTaskBoard();
-                renderTagFilterMenu(projectData.tags || []);
-                renderTagChips();
-            });
-
-            badge.appendChild(removeButton);
-            tagChipsContainer.appendChild(badge);
+    function updateTagBadges() {
+        const badges = document.querySelectorAll('.kb-project-tag');
+        badges.forEach(badge => {
+            const tagId = Number(badge.dataset.tagId);
+            badge.classList.toggle('active', selectedTagIds.has(tagId));
         });
     }
 
@@ -559,21 +770,33 @@
                     </div>
                     <i class="bi bi-three-dots-vertical"></i>
                 </div>
-                <div class="kb-add-task">
+                <div class="kb-add-task" role="button">
                     <i class="bi bi-plus-square me-2"></i>
                     Add new task (Shift + ${index + 1})
                 </div>
             `;
+            columnElement.querySelector('.kb-add-task')?.addEventListener('click', showTaskItemModal);
 
             columnTasks.forEach(task => {
                 const card = document.createElement('div');
                 card.className = 'kb-card';
+                card.draggable = true;
+                card.dataset.taskId = task.id;
+                card.dataset.columnId = column.id;
                 const dueDate = task.dueDate ? new Date(task.dueDate).toLocaleDateString() : 'No date';
                 const assignedUser = task.assignedUserName ? `<span>${task.assignedUserName}</span>` : '<span>No assignee</span>';
                 card.innerHTML = `
-                    <div class="d-flex justify-content-between">
+                    <div class="d-flex justify-content-between align-items-center">
                         <div class="kb-dot"></div>
-                        <i class="bi bi-three-dots-vertical text-muted"></i>
+                        <div class="dropdown kb-card-dropdown">
+                            <button class="btn p-0" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                <i class="bi bi-three-dots-vertical"></i>
+                            </button>
+                            <ul class="dropdown-menu dropdown-menu-end kb-project-selector-menu">
+                                <li><button class="dropdown-item task-action-view" type="button" data-task-id="${task.id}" data-task-title="${task.title}">View</button></li>
+                                <li><button class="dropdown-item text-danger task-action-remove" type="button" data-task-id="${task.id}" data-task-title="${task.title}">Remove</button></li>
+                            </ul>
+                        </div>
                     </div>
                     <h6 class="mt-3 fw-bold">${task.title}</h6>
                     <div class="kb-card-footer mt-4">
@@ -584,15 +807,142 @@
                         ${assignedUser}
                     </div>
                 `;
+                card.addEventListener('dragstart', event => {
+                    card.classList.add('dragging');
+                    event.dataTransfer.setData('text/plain', task.id);
+                    event.dataTransfer.effectAllowed = 'move';
+                });
+
+                card.addEventListener('dragend', () => {
+                    card.classList.remove('dragging');
+                });
+
                 columnElement.appendChild(card);
+            });
+
+            columnElement.dataset.columnId = column.id;
+            columnElement.addEventListener('dragover', event => {
+                event.preventDefault();
+                columnElement.classList.add('drag-over');
+            });
+
+            columnElement.addEventListener('dragleave', () => {
+                columnElement.classList.remove('drag-over');
+            });
+
+            columnElement.addEventListener('drop', async event => {
+                event.preventDefault();
+                columnElement.classList.remove('drag-over');
+                const taskId = event.dataTransfer.getData('text/plain');
+                if (!taskId) {
+                    return;
+                }
+
+                const card = document.querySelector(`[data-task-id="${taskId}"]`);
+                if (!card || card.dataset.columnId === column.id) {
+                    return;
+                }
+
+                await moveTaskToColumn(taskId, column.id);
             });
 
             boardContainer.appendChild(columnElement);
         });
+        attachTaskActionHandlers();
+    }
+
+    async function moveTaskToColumn(taskId, columnId) {
+        if (!projectData) {
+            return;
+        }
+
+        const response = await fetch(`/api/projects/${projectData.id}/tasks/${taskId}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ columnId })
+        });
+
+        if (!response.ok) {
+            console.error('Unable to move task to column', response.statusText);
+            return;
+        }
+
+        await loadProjectData();
+    }
+
+    function showDeleteTaskModal(taskId, taskTitle) {
+        if (!deleteTaskModal) {
+            return;
+        }
+
+        pendingDeleteTaskId = taskId;
+        if (deleteTaskBody) {
+            deleteTaskBody.textContent = `Are you sure you want to delete the task "${taskTitle}"?`;
+        }
+
+        const modal = new bootstrap.Modal(deleteTaskModal);
+        modal.show();
+    }
+
+    async function deleteTask() {
+        if (!projectData || !pendingDeleteTaskId) {
+            return;
+        }
+
+        const response = await fetch(`/api/projects/${projectData.id}/tasks/${pendingDeleteTaskId}`, {
+            method: 'DELETE'
+        });
+
+        if (!response.ok) {
+            console.error('Unable to delete task', response.statusText);
+            alert('Task could not be deleted.');
+            return;
+        }
+
+        const modalInstance = bootstrap.Modal.getInstance(deleteTaskModal);
+        modalInstance?.hide();
+        pendingDeleteTaskId = null;
+        await loadProjectData();
+    }
+
+    function attachTaskActionHandlers() {
+        if (!boardContainer) {
+            return;
+        }
+
+        boardContainer.querySelectorAll('.task-action-remove').forEach(button => {
+            button.removeEventListener('click', handleTaskRemoveClick);
+            button.addEventListener('click', handleTaskRemoveClick);
+        });
+
+        boardContainer.querySelectorAll('.task-action-view').forEach(button => {
+            button.removeEventListener('click', handleTaskViewClick);
+            button.addEventListener('click', handleTaskViewClick);
+        });
+    }
+
+    function handleTaskRemoveClick(event) {
+        const button = event.currentTarget;
+        const taskId = button.dataset.taskId;
+        const taskTitle = button.dataset.taskTitle || 'this task';
+        showDeleteTaskModal(taskId, taskTitle);
+    }
+
+    function handleTaskViewClick(event) {
+        event.preventDefault();
+        const button = event.currentTarget;
+        const taskTitle = button.dataset.taskTitle || 'Task';
+        alert(`View details for ${taskTitle}`);
     }
 
     async function loadProjectSelection() {
-        if (!projectSelectionList) {
+        if (!projectDropdownMenu) {
+            return;
+        }
+
+        if (projectDropdownLoaded) {
             return;
         }
 
@@ -603,37 +953,182 @@
         }
 
         const projects = await response.json();
-        projectSelectionList.innerHTML = '';
+        projectDropdownMenu.innerHTML = '';
 
         projects.forEach(project => {
-            const item = document.createElement('button');
-            item.type = 'button';
-            item.className = 'list-group-item list-group-item-action';
-            item.textContent = project.name;
-            item.addEventListener('click', () => {
-                window.location.href = `/Task?id=${project.id}`;
+            const item = document.createElement('li');
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.className = 'dropdown-item';
+            button.textContent = project.name;
+            button.addEventListener('click', () => {
+                window.location.href = `/task?id=${project.id}`;
             });
-            projectSelectionList.appendChild(item);
+            item.appendChild(button);
+            projectDropdownMenu.appendChild(item);
         });
 
-        projectSelectionLoaded = true;
+        projectDropdownLoaded = true;
     }
 
     async function openProjectSelection() {
-        if (!projectSelectionModal) {
+        await loadProjectSelection();
+    }
+
+    function showCreateProjectModal() {
+        if (!projectModalElement) {
             return;
         }
 
-        const modal = new bootstrap.Modal(projectSelectionModal);
+        const modal = new bootstrap.Modal(projectModalElement);
         modal.show();
+    }
 
-        if (!projectSelectionLoaded) {
-            await loadProjectSelection();
+    function populateTaskModal() {
+        if (!projectData) {
+            return;
+        }
+
+        if (taskTitleInput) {
+            taskTitleInput.value = '';
+        }
+        if (taskDescriptionInput) {
+            taskDescriptionInput.value = '';
+        }
+        if (taskStartDateInput) {
+            taskStartDateInput.value = '';
+        }
+        if (taskDueDateInput) {
+            taskDueDateInput.value = '';
+        }
+        if (taskBoardTypeInput) {
+            taskBoardTypeInput.value = projectData.name || 'Board';
+        }
+
+        if (taskColumnSelect) {
+            taskColumnSelect.innerHTML = '';
+            (projectData.columns || []).forEach(column => {
+                const option = document.createElement('option');
+                option.value = column.id;
+                option.textContent = column.name;
+                taskColumnSelect.appendChild(option);
+            });
+        }
+
+        if (taskAssignedToSelect) {
+            taskAssignedToSelect.innerHTML = '<option value="">Unassigned</option>';
+            (projectData.collaborators || []).forEach(collaborator => {
+                const option = document.createElement('option');
+                option.value = collaborator.userId;
+                option.textContent = collaborator.fullName || collaborator.email || 'Collaborator';
+                taskAssignedToSelect.appendChild(option);
+            });
+        }
+
+        if (taskCategorySelect) {
+            taskCategorySelect.innerHTML = '<option value="">-- Please Select --</option>';
+            (projectData.tags || []).forEach(tag => {
+                const option = document.createElement('option');
+                option.value = tag.id;
+                option.textContent = tag.name;
+                taskCategorySelect.appendChild(option);
+            });
         }
     }
 
-    function goToNewProjectPage() {
-        window.location.href = '/Project';
+    async function createTaskItem() {
+        if (!projectData) {
+            return;
+        }
+
+        const title = taskTitleInput?.value.trim() || '';
+        const description = taskDescriptionInput?.value.trim() || '';
+        const boardType = taskBoardTypeInput?.value.trim() || '';
+        const columnId = taskColumnSelect?.value;
+        const assignedUserId = taskAssignedToSelect?.value || null;
+        const startDate = taskStartDateInput?.value || null;
+        const dueDate = taskDueDateInput?.value || null;
+        const priority = taskPrioritySelect?.value || '';
+        const tagId = taskCategorySelect?.value || null;
+
+        if (!title) {
+            alert('Please enter a task name.');
+            return;
+        }
+
+        if (!description) {
+            alert('Please enter a task description.');
+            return;
+        }
+
+        if (!boardType) {
+            alert('Board Type is required.');
+            return;
+        }
+
+        if (!columnId) {
+            alert('Please select a column.');
+            return;
+        }
+
+        if (!startDate) {
+            alert('Please select a start date.');
+            return;
+        }
+
+        if (!dueDate) {
+            alert('Please select a due date.');
+            return;
+        }
+
+        if (!priority) {
+            alert('Please select a priority.');
+            return;
+        }
+
+        const payload = {
+            title,
+            description,
+            boardType,
+            columnId,
+            assignedUserId: assignedUserId || null,
+            startDate: startDate || null,
+            dueDate: dueDate || null,
+            priority,
+            tagId: tagId || null,
+        };
+
+        try {
+            const response = await fetch(`/api/projects/${projectData.id}/tasks`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(payload)
+            });
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(errorText || 'Unable to create task.');
+            }
+
+            const modalInstance = bootstrap.Modal.getInstance(taskItemModalElement);
+            modalInstance?.hide();
+            await loadProjectData();
+        } catch (error) {
+            console.error(error);
+            alert(`Task could not be created. ${error.message}`);
+        }
+    }
+
+    function showTaskItemModal() {
+        if (!taskItemModalElement) {
+            return;
+        }
+
+        populateTaskModal();
+        const modal = new bootstrap.Modal(taskItemModalElement);
+        modal.show();
     }
 
     async function deleteProject() {
@@ -650,7 +1145,7 @@
             return;
         }
 
-        window.location.href = '/Project';
+        window.location.href = '/task';
     }
 
     const selectedCollaborators = new Map();
@@ -878,17 +1373,8 @@
     if (clearTagFilterButton) {
         clearTagFilterButton.addEventListener('click', () => {
             selectedTagIds.clear();
-            renderTagFilterMenu(projectData?.tags || []);
-            renderTagChips();
+            renderProject(projectData);
             updateTaskBoard();
-        });
-    }
-
-    if (applyTagFilterButton) {
-        applyTagFilterButton.addEventListener('click', () => {
-            updateTaskBoard();
-            const filterDropdown = bootstrap.Dropdown.getOrCreateInstance(filterButton);
-            filterDropdown.hide();
         });
     }
 
@@ -900,8 +1386,12 @@
         confirmDeleteProjectButton.addEventListener('click', deleteProject);
     }
 
+    if (confirmDeleteTaskButton) {
+        confirmDeleteTaskButton.addEventListener('click', deleteTask);
+    }
+
     if (newProjectButton) {
-        newProjectButton.addEventListener('click', goToNewProjectPage);
+        newProjectButton.addEventListener('click', showCreateProjectModal);
     }
 
     if (inviteButton) {
@@ -914,6 +1404,10 @@
 
     if (confirmInviteButton) {
         confirmInviteButton.addEventListener('click', confirmInvite);
+    }
+
+    if (saveTaskButton) {
+        saveTaskButton.addEventListener('click', createTaskItem);
     }
 
     if (projectNameDisplay) {

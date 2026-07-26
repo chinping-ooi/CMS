@@ -1,0 +1,406 @@
+@model CMS.Models.Project
+
+<div class="modal fade" id="projectModal" tabindex="-1" aria-labelledby="projectModalLabel" aria-hidden="true" data-auto-open="@(ViewData["ProjectModalAutoOpen"] as bool? ?? false ? "true" : "false")">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="projectModalLabel">Create New Project</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form asp-controller="Project" asp-action="Create" method="post">
+                    <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+
+                    <h5 class="mb-3 section-title">Project Information</h5>
+                    <div class="mb-3">
+                        <label asp-for="Name" class="form-label required-field">Project Name</label>
+                        <input asp-for="Name" class="form-control" placeholder="Enter project name" required />
+                        <span asp-validation-for="Name" class="text-danger"></span>
+                    </div>
+
+                    <div class="mb-4">
+                        <label asp-for="Description" class="form-label">Project Description</label>
+                        <textarea asp-for="Description" class="form-control" rows="4" placeholder="Enter project description"></textarea>
+                    </div>
+
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h5 class="mb-0 section-title required-field">Create Columns</h5>
+                        <button type="button" id="add-column" class="btn btn-outline-primary btn-sm">
+                            <i class="fa fa-plus me-1"></i>Add Column
+                        </button>
+                    </div>
+
+                    <div id="columns" class="mb-4">
+                        @for (var index = 0; index < Model.Columns.Count; index++)
+                        {
+                            <div class="input-group mb-2 column-row" draggable="true">
+                                <span class="input-group-text column-label">@(index + 1).</span>
+                                <input name="Columns[@index].Name" value="@Model.Columns.ElementAt(index).Name" class="form-control column-name" placeholder="Column name" required aria-label="Column @(index + 1) name" />
+                                <span class="column-validation" data-valmsg-for="Columns[@index].Name"></span>
+                                <button type="button" class="btn remove-column" aria-label="Remove column @(index + 1)" title="Remove column">
+                                    <i class="fa fa-times"></i>
+                                </button>
+                            </div>
+                        }
+                    </div>
+                    <p id="columns-minimum-message" class="minimum-item-message" hidden>
+                        Keep at least one column in the project.
+                    </p>
+
+                    <section class="tag-section mb-4" aria-labelledby="tags-heading">
+                        <div class="tag-section-header">
+                            <div>
+                                <h5 id="tags-heading" class="mb-1 section-title required-field">Create Tags</h5>
+                                <p class="tag-section-caption mb-0">Add labels to organize your project.</p>
+                            </div>
+                            <span class="tag-count" aria-live="polite">@Model.Tags.Count @((Model.Tags.Count == 1) ? "label" : "labels")</span>
+                        </div>
+
+                        <div id="tags" class="tag-list">
+                            @for (var index = 0; index < Model.Tags.Count; index++)
+                            {
+                                <div class="tag-item">
+                                    <input name="Tags[@index].Color" class="form-control form-control-color tag-color" type="color" value="@Model.Tags.ElementAt(index).Color" title="Choose tag color" />
+                                    <input name="Tags[@index].Name" class="form-control form-control-sm tag-name" value="@Model.Tags.ElementAt(index).Name" required />
+                                    <button type="button" class="btn btn-sm remove-tag" aria-label="Remove @Model.Tags.ElementAt(index).Name tag" title="Remove tag">
+                                        <i class="fa fa-times"></i>
+                                    </button>
+                                </div>
+                            }
+                        </div>
+                        <p id="tags-minimum-message" class="minimum-item-message" hidden>
+                            Keep at least one tag in the project.
+                        </p>
+
+                        <div class="tag-create-group">
+                            <label for="new-tag-name" class="visually-hidden">New tag name</label>
+                            <input id="new-tag-name" type="text" class="form-control form-control-sm" placeholder="New tag name" />
+                            <label for="new-tag-color" class="tag-color-label">Color</label>
+                            <input id="new-tag-color" class="form-control form-control-color" type="color" value="#6f42c1" title="Choose tag color" />
+                            <button id="add-tag" type="button" class="btn btn-primary btn-sm">
+                                <i class="fa fa-plus me-1"></i>Add Tag
+                            </button>
+                        </div>
+                    </section>
+
+                    <h5 class="mb-3 section-title">Add Collaborators</h5>
+                    <div class="mb-4 collaborator-search">
+                        <label for="collaborator-search" class="visually-hidden">Search for people</label>
+                        <input id="collaborator-search" type="search" class="form-control" placeholder="Search for people, then press Enter..." autocomplete="off" />
+                        <div id="collaborator-results" class="collaborator-results" role="listbox" hidden></div>
+                        <div id="collaborators" class="collaborator-list" aria-live="polite"></div>
+                    </div>
+
+                    <div class="d-flex justify-content-end gap-2">
+                        <a asp-controller="Home" asp-action="Index" class="btn btn-cancel px-4">Cancel</a>
+                        <button type="submit" class="btn btn-success px-4">Create Project</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<partial name="_ValidationScriptsPartial" />
+<script>
+    (() => {
+        const projectModal = document.getElementById('projectModal');
+        if (!projectModal) {
+            return;
+        }
+
+        const columns = document.getElementById('columns');
+        const addColumnButton = document.getElementById('add-column');
+        const columnsMinimumMessage = document.getElementById('columns-minimum-message');
+        let draggedColumn = null;
+
+        const refreshColumnIndexes = () => {
+            columns.querySelectorAll('.column-row').forEach((row, index) => {
+                row.querySelector('.column-label').innerHTML = `${index + 1}.`;
+                row.querySelector('.column-name').name = `Columns[${index}].Name`;
+                row.querySelector('.remove-column').setAttribute('aria-label', `Remove column ${index + 1}`);
+            });
+        };
+
+        addColumnButton.addEventListener('click', () => {
+            const row = document.createElement('div');
+            row.className = 'input-group mb-2 column-row';
+            row.draggable = true;
+            row.innerHTML = `
+                <span class="input-group-text column-label"></span>
+                <input class="form-control column-name" placeholder="Column name" />
+                <button type="button" class="btn remove-column" aria-label="Remove column" title="Remove column">
+                    <i class="fa fa-times"></i>
+                </button>`;
+            columns.appendChild(row);
+            columnsMinimumMessage.hidden = true;
+            refreshColumnIndexes();
+        });
+
+        columns.addEventListener('dragstart', (event) => {
+            const row = event.target.closest('.column-row');
+            if (!row) {
+                return;
+            }
+            draggedColumn = row;
+            row.classList.add('column-dragging');
+            event.dataTransfer.effectAllowed = 'move';
+        });
+
+        columns.addEventListener('dragover', (event) => {
+            event.preventDefault();
+            const targetRow = event.target.closest('.column-row');
+            if (!draggedColumn || !targetRow || draggedColumn === targetRow) {
+                return;
+            }
+            const targetBounds = targetRow.getBoundingClientRect();
+            const insertBefore = event.clientY < targetBounds.top + targetBounds.height / 2;
+            columns.insertBefore(draggedColumn, insertBefore ? targetRow : targetRow.nextElementSibling);
+        });
+
+        columns.addEventListener('dragend', () => {
+            if (draggedColumn) {
+                draggedColumn.classList.remove('column-dragging');
+            }
+            draggedColumn = null;
+            refreshColumnIndexes();
+        });
+
+        columns.addEventListener('click', (event) => {
+            const removeButton = event.target.closest('.remove-column');
+            if (!removeButton) {
+                return;
+            }
+            if (columns.querySelectorAll('.column-row').length === 1) {
+                columnsMinimumMessage.hidden = false;
+                return;
+            }
+            removeButton.closest('.column-row').remove();
+            columnsMinimumMessage.hidden = true;
+            refreshColumnIndexes();
+        });
+
+        refreshColumnIndexes();
+
+        const tags = document.getElementById('tags');
+        const addTagButton = document.getElementById('add-tag');
+        const newTagName = document.getElementById('new-tag-name');
+        const newTagColor = document.getElementById('new-tag-color');
+        const tagCount = document.querySelector('.tag-count');
+        const tagsMinimumMessage = document.getElementById('tags-minimum-message');
+
+        const escapeHtml = (value) => value.replace(/[&<>'"]/g, (character) => ({
+            '&': '&amp;',
+            '<': '&lt;',
+            '>': '&gt;',
+            "'": '&#39;',
+            '"': '&quot;'
+        })[character]);
+
+        const refreshTagIndexes = () => {
+            const tagItems = tags.querySelectorAll('.tag-item');
+            tagItems.forEach((tag, index) => {
+                const nameInput = tag.querySelector('.tag-name');
+                const colorInput = tag.querySelector('.tag-color');
+                const tagName = nameInput.value.trim() || `tag ${index + 1}`;
+                nameInput.name = `Tags[${index}].Name`;
+                colorInput.name = `Tags[${index}].Color`;
+                tag.querySelector('.remove-tag').setAttribute('aria-label', `Remove ${tagName} tag`);
+                tag.style.setProperty('--tag-color', colorInput.value);
+            });
+            tagCount.textContent = `${tagItems.length} ${tagItems.length === 1 ? 'label' : 'labels'}`;
+        };
+
+        addTagButton.addEventListener('click', () => {
+            const name = newTagName.value.trim();
+            if (!name) {
+                newTagName.focus();
+                return;
+            }
+            const tag = document.createElement('div');
+            const safeName = escapeHtml(name);
+            tag.className = 'tag-item';
+            tag.innerHTML = `
+                <input class="form-control form-control-color tag-color" type="color" value="${newTagColor.value}" title="Choose tag color" />
+                <input class="form-control form-control-sm tag-name" value="${safeName}" required />
+                <button type="button" class="btn btn-sm remove-tag" aria-label="Remove ${safeName} tag" title="Remove tag">
+                    <i class="fa fa-times"></i>
+                </button>`;
+            tags.appendChild(tag);
+            tagsMinimumMessage.hidden = true;
+            newTagName.value = '';
+            refreshTagIndexes();
+            newTagName.focus();
+        });
+
+        newTagName.addEventListener('keydown', (event) => {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                addTagButton.click();
+            }
+        });
+
+        tags.addEventListener('click', (event) => {
+            const removeButton = event.target.closest('.remove-tag');
+            if (!removeButton) {
+                return;
+            }
+            if (tags.querySelectorAll('.tag-item').length === 1) {
+                tagsMinimumMessage.hidden = false;
+                return;
+            }
+            removeButton.closest('.tag-item').remove();
+            tagsMinimumMessage.hidden = true;
+            refreshTagIndexes();
+        });
+
+        tags.addEventListener('input', (event) => {
+            if (event.target.matches('.tag-name, .tag-color')) {
+                refreshTagIndexes();
+            }
+        });
+
+        const collaboratorSearch = document.getElementById('collaborator-search');
+        const collaboratorResults = document.getElementById('collaborator-results');
+        const collaborators = document.getElementById('collaborators');
+        let usersRequest = null;
+        let searchDebounceTimer = null;
+        let lastUsers = [];
+
+        const addCollaborator = (user) => {
+            if (collaborators.querySelector(`[data-user-id="${user.id}"]`)) {
+                return;
+            }
+            const badge = document.createElement('span');
+            badge.className = 'collaborator-badge';
+            badge.dataset.userId = user.id;
+
+            const collaboratorId = document.createElement('input');
+            collaboratorId.type = 'hidden';
+            collaboratorId.name = 'collaboratorIds';
+            collaboratorId.value = user.id;
+
+            const badgeText = document.createElement('span');
+            badgeText.textContent = `${user.name} (${user.email})`;
+
+            const removeButton = document.createElement('button');
+            removeButton.type = 'button';
+            removeButton.className = 'remove-collaborator';
+            removeButton.setAttribute('aria-label', `Remove ${user.name}`);
+            removeButton.title = 'Remove collaborator';
+            removeButton.innerHTML = '<i class="fa fa-times"></i>';
+
+            badge.append(collaboratorId, badgeText, removeButton);
+            collaborators.appendChild(badge);
+
+            if (collaboratorSearch.value.trim().length > 0) {
+                const selectedIds = new Set(Array.from(collaborators.querySelectorAll('.collaborator-badge')).map(badge => badge.dataset.userId));
+                renderUserResults(lastUsers.filter(user => !selectedIds.has(user.id)));
+            }
+        };
+
+        const refreshUserResults = () => {
+            const search = collaboratorSearch.value.trim();
+            if (search.length === 0) {
+                collaboratorResults.hidden = true;
+                return;
+            }
+
+            showCollaboratorMessage('Searching users...');
+            usersRequest = fetch(`/api/users/search?q=${encodeURIComponent(search)}`)
+                .then((response) => {
+                    if (!response.ok) {
+                        throw new Error('User search failed');
+                    }
+                    return response.json();
+                })
+                .finally(() => {
+                    usersRequest = null;
+                });
+
+            usersRequest.then((users) => {
+                lastUsers = users;
+                renderUserResults(users);
+            }).catch((error) => {
+                showCollaboratorMessage('Unable to fetch users right now.');
+                console.error(error);
+            });
+        };
+
+        const showCollaboratorMessage = (message) => {
+            const messageOption = document.createElement('p');
+            messageOption.className = 'collaborator-no-results mb-0';
+            messageOption.setAttribute('role', 'option');
+            messageOption.textContent = message;
+            collaboratorResults.replaceChildren(messageOption);
+            collaboratorResults.hidden = false;
+        };
+
+        const renderUserResults = (users) => {
+            collaboratorResults.replaceChildren();
+            const selectedIds = new Set(Array.from(collaborators.querySelectorAll('.collaborator-badge')).map(badge => badge.dataset.userId));
+            const filteredUsers = users.filter(user => !selectedIds.has(user.id));
+
+            filteredUsers.forEach((user) => {
+                const result = document.createElement('button');
+                result.type = 'button';
+                result.className = 'collaborator-result';
+                result.setAttribute('role', 'option');
+
+                const name = document.createElement('strong');
+                name.textContent = user.name;
+
+                const email = document.createElement('small');
+                email.textContent = user.email;
+
+                result.append(name, email);
+                result.addEventListener('click', () => addCollaborator(user));
+                collaboratorResults.appendChild(result);
+            });
+
+            if (filteredUsers.length === 0) {
+                showCollaboratorMessage('No users found. Add users to the system first.');
+                return;
+            }
+
+            collaboratorResults.hidden = false;
+        };
+
+        collaboratorSearch.addEventListener('input', () => {
+            const search = collaboratorSearch.value.trim();
+            collaboratorResults.hidden = true;
+            collaboratorResults.replaceChildren();
+            clearTimeout(searchDebounceTimer);
+
+            if (!search) {
+                return;
+            }
+
+            searchDebounceTimer = setTimeout(() => {
+                refreshUserResults();
+            }, 1000);
+        });
+
+        collaboratorSearch.addEventListener('keydown', (event) => {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                collaboratorResults.querySelector('.collaborator-result')?.click();
+            }
+        });
+
+        collaborators.addEventListener('click', (event) => {
+            const removeButton = event.target.closest('.remove-collaborator');
+            if (removeButton) {
+                removeButton.closest('.collaborator-badge').remove();
+            }
+        });
+
+        refreshTagIndexes();
+
+        const autoOpen = projectModal.dataset.autoOpen === 'true';
+        if (autoOpen) {
+            const modal = new bootstrap.Modal(projectModal);
+            modal.show();
+        }
+    })();
+</script>

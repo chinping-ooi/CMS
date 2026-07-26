@@ -16,11 +16,6 @@ public class ProjectController : Controller
         _logger = logger;
     }
 
-    public IActionResult Index()
-    {
-        return View(CreateDefaultProject());
-    }
-
     [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Create(Project project, [FromForm] Guid[]? collaboratorIds)

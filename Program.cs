@@ -77,6 +77,7 @@ using (var scope = app.Services.CreateScope())
             id uuid NOT NULL PRIMARY KEY,
             title character varying(255) NOT NULL,
             description text NULL,
+            board_type text NULL,
             project_id uuid NOT NULL,
             column_id uuid NOT NULL,
             assigned_user_id uuid NULL,
@@ -96,6 +97,8 @@ using (var scope = app.Services.CreateScope())
 
         -- Ensure priority column is text if previously integer
         -- and add new optional columns when upgrading an existing schema.
+        ALTER TABLE task_item
+            ADD COLUMN IF NOT EXISTS board_type text NULL;
         ALTER TABLE task_item
             ADD COLUMN IF NOT EXISTS start_date timestamp with time zone NULL;
         ALTER TABLE task_item
@@ -126,11 +129,14 @@ using (var scope = app.Services.CreateScope())
                 REFERENCES task_item (id) ON DELETE CASCADE
         );
         """);
+
+    await connection.ExecuteAsync("ALTER TABLE task_item ADD COLUMN IF NOT EXISTS board_type text NULL;");
 }
 
 if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/Home/Error");
+    app.UseStatusCodePagesWithReExecute("/Home/NotFoundPage");
     app.UseHsts();
 }
 

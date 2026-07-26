@@ -2,133 +2,10 @@
 
 @{
     ViewData["Title"] = "Create Project";
+    ViewData["ProjectModalAutoOpen"] = true;
 }
 
-<div class="container py-5">
-    <div class="card project-card border">
-        <div class="card-header bg-light border-bottom">
-            <h3 class="mb-0">Create New Project</h3>
-        </div>
-
-        <div class="card-body">
-            <form asp-controller="Project" asp-action="Create" method="post">
-                <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
-
-                <h4 class="mb-3 section-title">Project Information</h4>
-                <div class="mb-3">
-                    <label asp-for="Name" class="form-label required-field">Project Name</label>
-                    <input asp-for="Name" class="form-control" placeholder="Enter project name" required />
-                    <span asp-validation-for="Name" class="text-danger"></span>
-                </div>
-
-                <div class="mb-4">
-                    <label asp-for="Description" class="form-label">Project Description</label>
-                    <textarea asp-for="Description" class="form-control" rows="4"
-                              placeholder="Enter project description"></textarea>
-                </div>
-
-                <div class="d-flex justify-content-between align-items-center mb-3">
-                    <h4 class="mb-0 section-title required-field">Create Columns</h4>
-                    <button type="button" id="add-column" class="btn btn-outline-primary btn-sm">
-                        <i class="fa fa-plus me-1"></i>Add Column
-                    </button>
-                </div>
-
-                <div id="columns" class="mb-4">
-                    @for (var index = 0; index < Model.Columns.Count; index++)
-                    {
-                        <div class="input-group mb-2 column-row" draggable="true">
-                            <span class="input-group-text column-label">@(index + 1).</span>
-                            <input name="Columns[@index].Name"
-                                   value="@Model.Columns.ElementAt(index).Name"
-                                   class="form-control column-name"
-                                placeholder="Column name"
-                                required
-                                aria-label="Column @(index + 1) name" />
-                            <span class="column-validation" data-valmsg-for="Columns[@index].Name"></span>
-                            <button type="button" class="btn remove-column"
-                                    aria-label="Remove column @(index + 1)" title="Remove column">
-                                <i class="fa fa-times"></i>
-                            </button>
-                        </div>
-                    }
-                </div>
-                <p id="columns-minimum-message" class="minimum-item-message" hidden>
-                    Keep at least one column in the project.
-                </p>
-
-                <section class="tag-section mb-4" aria-labelledby="tags-heading">
-                    <div class="tag-section-header">
-                        <div>
-                            <h4 id="tags-heading" class="mb-1 section-title required-field">Create Tags</h4>
-                            <p class="tag-section-caption mb-0">Add labels to organize your project.</p>
-                        </div>
-                        <span class="tag-count" aria-live="polite">3 labels</span>
-                    </div>
-
-                    <div id="tags" class="tag-list">
-                        <div class="tag-item">
-                            <input name="Tags[0].Color" class="form-control form-control-color tag-color" type="color"
-                                   value="#0d6efd" title="Choose tag color" />
-                            <input name="Tags[0].Name" class="form-control form-control-sm tag-name" value="FEATURE" required />
-                            <button type="button" class="btn btn-sm remove-tag"
-                                    aria-label="Remove FEATURE tag" title="Remove tag">
-                                <i class="fa fa-times"></i>
-                            </button>
-                        </div>
-                        <div class="tag-item">
-                            <input name="Tags[1].Color" class="form-control form-control-color tag-color" type="color"
-                                   value="#dc3545" title="Choose tag color" />
-                            <input name="Tags[1].Name" class="form-control form-control-sm tag-name" value="BUG" required />
-                            <button type="button" class="btn btn-sm remove-tag"
-                                    aria-label="Remove BUG tag" title="Remove tag">
-                                <i class="fa fa-times"></i>
-                            </button>
-                        </div>
-                        <div class="tag-item">
-                            <input name="Tags[2].Color" class="form-control form-control-color tag-color" type="color"
-                                   value="#198754" title="Choose tag color" />
-                            <input name="Tags[2].Name" class="form-control form-control-sm tag-name" value="REQUEST" required />
-                            <button type="button" class="btn btn-sm remove-tag"
-                                    aria-label="Remove REQUEST tag" title="Remove tag">
-                                <i class="fa fa-times"></i>
-                            </button>
-                        </div>
-                    </div>
-                    <p id="tags-minimum-message" class="minimum-item-message" hidden>
-                        Keep at least one tag in the project.
-                    </p>
-
-                    <div class="tag-create-group">
-                        <label for="new-tag-name" class="visually-hidden">New tag name</label>
-                        <input id="new-tag-name" type="text" class="form-control form-control-sm"
-                               placeholder="New tag name" />
-                        <label for="new-tag-color" class="tag-color-label">Color</label>
-                        <input id="new-tag-color" class="form-control form-control-color" type="color"
-                               value="#6f42c1" title="Choose tag color" />
-                        <button id="add-tag" type="button" class="btn btn-primary btn-sm">
-                            <i class="fa fa-plus me-1"></i>Add Tag
-                        </button>
-                    </div>
-                </section>
-
-                <h4 class="mb-3 section-title">Add Collaborators</h4>
-                <div class="mb-4 collaborator-search">
-                    <label for="collaborator-search" class="visually-hidden">Search for people</label>
-                    <input id="collaborator-search" type="search" class="form-control"
-                           placeholder="Search for people, then press Enter..." autocomplete="off" />
-                    <div id="collaborator-results" class="collaborator-results" role="listbox" hidden></div>
-                    <div id="collaborators" class="collaborator-list" aria-live="polite"></div>
-                </div>
-
-                <div class="d-flex justify-content-end gap-2">
-                    <a asp-controller="Home" asp-action="Index" class="btn btn-cancel px-4">Cancel</a>
-                    <button type="submit" class="btn btn-success px-4">Create Project</button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
+@await Html.PartialAsync("_CreateProjectModal", Model)
 
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
@@ -455,6 +332,12 @@
             });
 
             refreshTagIndexes();
+
+            const projectModal = document.getElementById('projectModal');
+            if (projectModal) {
+                const modal = new bootstrap.Modal(projectModal);
+                modal.show();
+            }
         })();
     </script>
 }

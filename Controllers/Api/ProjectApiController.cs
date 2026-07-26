@@ -60,7 +60,7 @@ public class ProjectApiController : ControllerBase
             new { ProjectId = id },
             splitOn: "id")).ToList();
 
-        const string tasksSql = "SELECT ti.id, ti.title, ti.description, ti.project_id, ti.column_id, ti.assigned_user_id, ti.due_date, ti.priority, ti.created_at, ti.updated_at, u.id, u.full_name, u.email, u.created_at FROM task_item ti LEFT JOIN users u ON u.id = ti.assigned_user_id WHERE ti.project_id = @ProjectId";
+        const string tasksSql = "SELECT ti.id, ti.title, ti.description, ti.project_id AS ProjectId, ti.column_id AS ColumnId, ti.assigned_user_id AS AssignedUserId, ti.start_date AS StartDate, ti.due_date AS DueDate, ti.priority, ti.created_at AS CreatedAt, ti.updated_at AS UpdatedAt, u.id, u.full_name, u.email, u.created_at FROM task_item ti LEFT JOIN users u ON u.id = ti.assigned_user_id WHERE ti.project_id = @ProjectId";
 
         project.Tasks = (await connection.QueryAsync<TaskItem, User, TaskItem>(
             tasksSql,
@@ -186,6 +186,124 @@ public class ProjectApiController : ControllerBase
         await transaction.CommitAsync();
 
         return CreatedAtAction(nameof(Get), new { id = project.Id }, MapProject(project));
+    }
+
+    [HttpPost("{id:guid}/tasks")]
+    public async Task<ActionResult<TaskItemApiResponse>> CreateTask(Guid id, CreateTaskItemRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(request.Title))
+        {
+            return BadRequest("Title is required.");
+        }
+
+        if (string.IsNullOrWhiteSpace(request.BoardType))
+        {
+            return BadRequest("Board Type is required.");
+        }
+
+        if (request.ColumnId == Guid.Empty)
+        {
+            return BadRequest("Column is required.");
+        }
+
+        var task = new TaskItem
+        {
+            Id = Guid.NewGuid(),
+            Title = request.Title.Trim(),
+            Description = string.IsNullOrWhiteSpace(request.Description) ? null : request.Description.Trim(),
+            BoardType = string.IsNullOrWhiteSpace(request.BoardType) ? null : request.BoardType.Trim(),
+            ProjectId = id,
+            ColumnId = request.ColumnId,
+            AssignedUserId = request.AssignedUserId == Guid.Empty ? null : request.AssignedUserId,
+            StartDate = request.StartDate,
+            DueDate = request.DueDate,
+            Priority = string.IsNullOrWhiteSpace(request.Priority) ? "Medium" : request.Priority,
+            Category = request.TagId.HasValue ? request.TagId.Value.ToString() : null,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow,
+            Project = new Project { Id = id },
+            Column = new ProjectColumn { Id = request.ColumnId }
+        };
+
+        await using var connection = await _context.CreateOpenConnectionAsync();
+        await using var transaction = await connection.BeginTransactionAsync();
+
+        const string insertTaskSql = @"
+            INSERT INTO task_item
+                (id, title, description, board_type, project_id, column_id, assigned_user_id, start_date, due_date, priority, category, created_at, updated_at)
+            VALUES
+                (@Id, @Title, @Description, @BoardType, @ProjectId, @ColumnId, @AssignedUserId, @StartDate, @DueDate, @Priority, @Category, @CreatedAt, @UpdatedAt)";
+
+        await connection.ExecuteAsync(insertTaskSql, task, transaction);
+
+        if (request.TagId.HasValue)
+        {
+            const string insertTaskTagSql = @"
+                INSERT INTO task_item_tag (task_id, tag_id)
+                VALUES (@TaskId, @TagId)";
+
+            await connection.ExecuteAsync(insertTaskTagSql, new { TaskId = task.Id, TagId = request.TagId.Value }, transaction);
+        }
+
+        await transaction.CommitAsync();
+
+        return Ok(new TaskItemApiResponse
+        {
+            Id = task.Id,
+            Title = task.Title,
+            Description = task.Description,
+            ColumnId = task.ColumnId,
+            AssignedUserName = null,
+            DueDate = task.DueDate,
+            Priority = task.Priority,
+            Tags = request.TagId.HasValue ? new List<ProjectTagApiResponse> { new() { Id = request.TagId.Value, Name = string.Empty } } : new List<ProjectTagApiResponse>()
+        });
+    }
+
+    [HttpPut("{projectId:guid}/tasks/{taskId:guid}")]
+    public async Task<IActionResult> MoveTask(Guid projectId, Guid taskId, [FromBody] MoveTaskRequest request)
+    {
+        if (request == null || request.ColumnId == Guid.Empty)
+        {
+            return BadRequest("Column is required.");
+        }
+
+        await using var connection = await _context.CreateOpenConnectionAsync();
+        const string updateSql = @"
+            UPDATE task_item
+            SET column_id = @ColumnId,
+                updated_at = @UpdatedAt
+            WHERE id = @TaskId AND project_id = @ProjectId";
+
+        var rows = await connection.ExecuteAsync(updateSql, new
+        {
+            ColumnId = request.ColumnId,
+            UpdatedAt = DateTime.UtcNow,
+            TaskId = taskId,
+            ProjectId = projectId,
+        });
+
+        if (rows == 0)
+        {
+            return NotFound();
+        }
+
+        return NoContent();
+    }
+
+    [HttpDelete("{projectId:guid}/tasks/{taskId:guid}")]
+    public async Task<IActionResult> DeleteTask(Guid projectId, Guid taskId)
+    {
+        await using var connection = await _context.CreateOpenConnectionAsync();
+        const string deleteSql = "DELETE FROM task_item WHERE id = @TaskId AND project_id = @ProjectId";
+        var rows = await connection.ExecuteAsync(deleteSql, new { TaskId = taskId, ProjectId = projectId });
+
+        if (rows == 0)
+        {
+            return NotFound();
+        }
+
+        return NoContent();
     }
 
     [HttpPut("{id:guid}")]
@@ -349,6 +467,11 @@ public class ProjectColumnApiResponse
     public int Position { get; set; }
 }
 
+public class MoveTaskRequest
+{
+    public Guid ColumnId { get; set; }
+}
+
 public class ProjectTagApiResponse
 {
     public Guid Id { get; set; }
@@ -364,6 +487,18 @@ public class ProjectCollaboratorApiResponse
     public string Email { get; set; } = string.Empty;
 }
 
+public sealed class CreateTaskItemRequest
+{
+    public string Title { get; set; } = string.Empty;
+    public string? Description { get; set; }
+    public string BoardType { get; set; } = string.Empty;
+    public Guid ColumnId { get; set; }
+    public Guid? AssignedUserId { get; set; }
+    public DateTime? StartDate { get; set; }
+    public DateTime? DueDate { get; set; }
+    public string Priority { get; set; } = string.Empty;
+    public Guid? TagId { get; set; }
+}
 public class TaskItemApiResponse
 {
     public Guid Id { get; set; }

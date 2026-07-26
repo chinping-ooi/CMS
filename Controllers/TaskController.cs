@@ -15,6 +15,7 @@ public class TaskController : Controller
         _context = context;
     }
 
+    [HttpGet("/task")]
     public async Task<IActionResult> Index(Guid? id)
     {
         await using var connection = await _context.CreateOpenConnectionAsync();
@@ -28,7 +29,7 @@ public class TaskController : Controller
 
         if (project == null)
         {
-            return NotFound();
+            return View((Project?)null);
         }
 
         project.Columns = (await connection.QueryAsync<ProjectColumn>(
@@ -50,12 +51,13 @@ public class TaskController : Controller
             splitOn: "Id")).ToList();
 
         project.Tasks = (await connection.QueryAsync<TaskItem>(
-            "SELECT id, title, description, project_id AS ProjectId, column_id AS ColumnId, assigned_user_id AS AssignedUserId, due_date AS DueDate, priority, created_at AS CreatedAt, updated_at AS UpdatedAt FROM task_item WHERE project_id = @ProjectId",
+            "SELECT id, title, description, project_id AS ProjectId, column_id AS ColumnId, assigned_user_id AS AssignedUserId, start_date AS StartDate, due_date AS DueDate, priority, created_at AS CreatedAt, updated_at AS UpdatedAt FROM task_item WHERE project_id = @ProjectId",
             new { ProjectId = project.Id })).ToList();
 
         return View(project);
     }
 
+    [HttpGet("/task/item")]
     public async Task<IActionResult> Item()
     {
         return View();
