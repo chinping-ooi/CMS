@@ -20,8 +20,8 @@ public class TaskController : Controller
     {
         await using var connection = await _context.CreateOpenConnectionAsync();
 
-        const string projectByIdSql = "SELECT id, name, description, created_at AS CreatedAt, updated_at AS UpdatedAt FROM project WHERE id = @Id";
-        const string firstProjectSql = "SELECT id, name, description, created_at AS CreatedAt, updated_at AS UpdatedAt FROM project ORDER BY created_at LIMIT 1";
+        const string projectByIdSql = "SELECT id, user_id AS UserId, name, description, created_at AS CreatedAt, updated_at AS UpdatedAt FROM project WHERE id = @Id";
+        const string firstProjectSql = "SELECT id, user_id AS UserId, name, description, created_at AS CreatedAt, updated_at AS UpdatedAt FROM project ORDER BY created_at LIMIT 1";
 
         var project = id.HasValue
             ? await connection.QuerySingleOrDefaultAsync<Project>(projectByIdSql, new { Id = id.Value })

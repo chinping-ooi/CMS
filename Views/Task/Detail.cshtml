@@ -34,12 +34,6 @@
     .kb-btn-light {
         background: #fff;
         border: 1px solid #dee2e6;
-        border-radius: 10px;
-    }
-
-    .kb-btn-light:hover {
-        background: #f8f9fa;
-        border-color: #dbe2ea;
     }
 
     .kb-project-tag {
@@ -120,7 +114,7 @@
 
     .kb-checklist-item {
         display: flex;
-        align-items: flex-start;
+        align-items: center;
         gap: 0.65rem;
         padding: 0.5rem 0;
         border-bottom: 1px solid #f3f4f6;
@@ -195,6 +189,48 @@
         padding: 0.5rem 0;
     }
 
+    .kb-assignee-picker { position: relative; }
+
+    .kb-assignee-suggestions {
+        position: absolute;
+        z-index: 10;
+        top: calc(100% + 0.25rem);
+        left: 0;
+        right: 0;
+        max-height: 220px;
+        overflow-y: auto;
+        padding: 0.25rem;
+        border: 1px solid #dbe2ea;
+        border-radius: 8px;
+        background: #fff;
+        box-shadow: 0 8px 16px rgba(15, 23, 42, 0.12);
+    }
+
+    .kb-assignee-suggestion {
+        display: flex;
+        width: 100%;
+        align-items: center;
+        gap: 0.6rem;
+        padding: 0.45rem 0.55rem;
+        border: 0;
+        border-radius: 6px;
+        background: transparent;
+        text-align: left;
+    }
+
+    .kb-assignee-suggestion:hover { background: #f3f6ff; }
+    .kb-assignee-suggestion .kb-avatar-initials { width: 30px; height: 30px; font-size: 0.68rem; }
+
+    .kb-remove-assignee {
+        margin-left: auto;
+        border: 0;
+        background: transparent;
+        color: #6b7280;
+        padding: 0.25rem;
+    }
+
+    .kb-remove-assignee:hover { color: #dc3545; }
+
     .kb-progress-bar {
         height: 8px;
         background: #edf1f7;
@@ -230,7 +266,7 @@
         <div class="kb-topbar mb-3 p-3 border rounded">
             <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
                 <div class="d-flex align-items-center gap-2">
-                    <a id="back-link" href="/task" class="btn kb-btn-light">
+                    <a id="back-link" href="/task" class="btn kb-btn-light rounded">
                         <i class="bi bi-arrow-left"></i>
                     </a>
                     <div>
@@ -258,21 +294,21 @@
                 <div class="kb-detail-card rounded-3">
                     <div class="kb-detail-card-header">
                         <span><i class="bi bi-check2-square me-2"></i>Checklist</span>
-                        <button type="button" id="add-checklist-toggle" class="btn btn-sm kb-btn-light">
+                        <button type="button" id="add-checklist-toggle" class="btn btn-sm btn-action fw-semibold">
                             <i class="bi bi-plus"></i> Add Item
                         </button>
                     </div>
                     <div class="kb-detail-card-body">
                         <div id="add-checklist-form" class="kb-add-checklist-form">
                             <input type="text" id="new-checklist-label" class="form-control form-control-sm" placeholder="Checklist item label" maxlength="500">
-                            <button type="button" id="add-checklist-submit" class="btn btn-sm kb-btn-primary">Add</button>
-                            <button type="button" id="add-checklist-cancel" class="btn btn-sm kb-btn-light">Cancel</button>
+                            <button type="button" id="add-checklist-cancel" class="btn btn-sm px-4 btn-cancel">Cancel</button>
+                            <button type="button" id="add-checklist-submit" class="btn btn-sm px-4 btn-action">Add</button>
                         </div>
 
                         <div class="kb-progress-bar mb-2">
                             <div id="checklist-progress-fill" class="kb-progress-bar-fill" style="width: 0%"></div>
                         </div>
-                        <small id="checklist-progress-text" class="text-muted d-block mb-3">0 of 0 items completed</small>
+                        <small id="checklist-progress-text" class="text-muted d-block">0 of 0 items completed</small>
 
                         <div id="checklist-items"></div>
                         <div id="checklist-empty" class="text-muted small d-none">No checklist items yet.</div>
@@ -314,21 +350,18 @@
                             <div id="task-assignee"></div>
                         </div>
 
-                        <hr class="my-3" style="border-color: #e5e7eb;">
+                        <hr class="my-3 border">
 
-                        <div class="kb-detail-item">
-                            <div class="kb-info-label">Start Date</div>
-                            <div id="task-start-date" class="kb-info-value"></div>
-                        </div>
+                        <div class="row g-3">
+                            <div class="col-6 kb-detail-item">
+                                <div class="kb-info-label">Start Date</div>
+                                <div id="task-start-date" class="kb-info-value"></div>
+                            </div>
 
-                        <div class="kb-detail-item">
-                            <div class="kb-info-label">Due Date</div>
-                            <div id="task-due-date" class="kb-info-value"></div>
-                        </div>
-
-                        <div class="kb-detail-item">
-                            <div class="kb-info-label">Category</div>
-                            <div id="task-category" class="kb-info-value"></div>
+                            <div class="col-6 kb-detail-item">
+                                <div class="kb-info-label">Due Date</div>
+                                <div id="task-due-date" class="kb-info-value"></div>
+                            </div>
                         </div>
 
                         <div class="kb-detail-item">
@@ -372,6 +405,8 @@
 
         let taskData = null;
         let checklist = [];
+        let projectCollaborators = [];
+        let projectOwnerId = null;
 
         function formatDate(value) {
             if (!value) return '—';
@@ -386,6 +421,23 @@
 
         function getInitials(name) {
             return (name || '?').split(' ').filter(Boolean).map(part => part[0]).join('').slice(0, 2).toUpperCase();
+        }
+
+        function escapeHtml(value) {
+            const element = document.createElement('div');
+            element.textContent = value || '';
+            return element.innerHTML;
+        }
+
+        function getCollaboratorUserId(collaborator) {
+            return collaborator?.userId || collaborator?.UserId || collaborator?.id || collaborator?.Id || null;
+        }
+
+        function isProjectOwner(userId) {
+            return String(projectOwnerId) === String(userId)
+                || projectCollaborators.some(collaborator =>
+                    String(getCollaboratorUserId(collaborator)) === String(userId)
+                    && String(collaborator.role || collaborator.Role || '').toLowerCase() === 'owner');
         }
 
         function getAttachmentIconClass(fileName) {
@@ -425,24 +477,137 @@
             const assignees = (task.assignees && task.assignees.length)
                 ? task.assignees
                 : (task.assignedUserName
-                    ? [{ fullName: task.assignedUserName, email: task.assignedUserEmail || '' }]
+                    ? [{ userId: task.assignedUserId, fullName: task.assignedUserName, email: task.assignedUserEmail || '' }]
                     : []);
-
-            if (!assignees.length) {
-                assigneeEl.innerHTML = '<div class="text-muted">Unassigned</div>';
-                return;
-            }
-
             const colors = ['#2f6fed', '#6366f1', '#198754', '#dc3545', '#fd7e14'];
-            assigneeEl.innerHTML = assignees.map((assignee, index) => `
+            assigneeEl.innerHTML = `
+                <div class="kb-assignee-picker mb-2">
+                    <div class="input-group input-group-sm">
+                        <span class="input-group-text bg-white"><i class="bi bi-search"></i></span>
+                        <input id="assignee-search" type="search" class="form-control" placeholder="Search project collaborators" autocomplete="off">
+                    </div>
+                    <div id="assignee-suggestions" class="kb-assignee-suggestions d-none"></div>
+                </div>
+                <div id="assigned-users-list"></div>`;
+
+            const assignedUsersList = document.getElementById('assigned-users-list');
+            if (!assignees.length) {
+                assignedUsersList.innerHTML = '<div class="text-muted small">Invite a collaborator to this task.</div>';
+            } else {
+                assignedUsersList.innerHTML = assignees.map((assignee, index) => `
                 <div class="kb-assignee-row">
                     <div class="kb-avatar-initials text-white" style="background:${colors[index % colors.length]}">${getInitials(assignee.fullName)}</div>
                     <div>
-                        <div class="fw-semibold">${assignee.fullName}</div>
-                        <small class="text-muted">${assignee.email || ''}</small>
+                        <div class="fw-semibold">${escapeHtml(assignee.fullName)}</div>
+                        <small class="text-muted">${escapeHtml(assignee.email || '')}</small>
                     </div>
+                    ${isProjectOwner(assignee.userId)
+                        ? '<span class="text-muted small ms-auto">Owner</span>'
+                        : `<button type="button" class="kb-remove-assignee" data-user-id="${assignee.userId}" title="Remove assignee" aria-label="Remove ${escapeHtml(assignee.fullName)}">
+                            <i class="bi bi-x-lg"></i>
+                           </button>`}
                 </div>
-            `).join('');
+                `).join('');
+            }
+
+            document.getElementById('assignee-search')?.addEventListener('input', event => {
+                renderAssigneeSuggestions(event.target.value);
+            });
+            document.getElementById('assignee-search')?.addEventListener('focus', event => {
+                renderAssigneeSuggestions(event.target.value);
+            });
+            assignedUsersList.querySelectorAll('.kb-remove-assignee').forEach(button => {
+                button.addEventListener('click', () => removeAssignee(button.dataset.userId));
+            });
+        }
+
+        function renderAssigneeSuggestions(searchTerm) {
+            const suggestionsEl = document.getElementById('assignee-suggestions');
+            if (!suggestionsEl || !taskData) return;
+
+            const term = (searchTerm || '').trim().toLowerCase();
+            const assignedIds = new Set((taskData.assignees || []).map(assignee => String(getCollaboratorUserId(assignee))));
+            const matches = projectCollaborators.filter(collaborator => {
+                const name = collaborator.fullName || '';
+                const email = collaborator.email || '';
+                return !assignedIds.has(String(getCollaboratorUserId(collaborator)))
+                    && (!term || name.toLowerCase().includes(term) || email.toLowerCase().includes(term));
+            });
+
+            suggestionsEl.innerHTML = '';
+            suggestionsEl.classList.toggle('d-none', matches.length === 0);
+            matches.slice(0, 8).forEach((collaborator, index) => {
+                const item = document.createElement('button');
+                item.type = 'button';
+                item.className = 'kb-assignee-suggestion';
+                item.innerHTML = `
+                    <span class="kb-avatar-initials text-white" style="background:${['#2f6fed', '#6366f1', '#198754', '#dc3545', '#fd7e14'][index % 5]}">${getInitials(collaborator.fullName || collaborator.email)}</span>
+                    <span><span class="d-block fw-semibold">${escapeHtml(collaborator.fullName || collaborator.email)}</span><small class="text-muted">${escapeHtml(collaborator.email || '')}</small></span>`;
+                item.addEventListener('click', () => addAssignee(collaborator));
+                suggestionsEl.appendChild(item);
+            });
+        }
+
+        async function addAssignee(collaborator) {
+            const userId = getCollaboratorUserId(collaborator);
+            if (!userId) {
+                console.error('Selected collaborator did not include a user ID.', collaborator);
+                alert('This collaborator cannot be assigned because their user ID is missing. Refresh the page and try again.');
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/projects/${projectId}/tasks/${taskId}/assignees/${encodeURIComponent(userId)}`, {
+                    method: 'POST'
+                });
+                if (!response.ok) {
+                    const message = await response.text();
+                    if (response.status === 404) {
+                        throw new Error('The assignment feature is not available in the running app. Restart the application and try again.');
+                    }
+                    throw new Error(message || 'Unable to assign collaborator');
+                }
+
+                const assignee = await response.json();
+                taskData.assignees = [...(taskData.assignees || []), assignee];
+                taskData.assignedUserId ||= assignee.userId;
+                taskData.assignedUserName ||= assignee.fullName;
+                taskData.assignedUserEmail ||= assignee.email;
+                renderAssignees(taskData);
+            } catch (error) {
+                console.error(error);
+                alert(error.message || 'Could not assign this collaborator.');
+            }
+        }
+
+        async function removeAssignee(userId) {
+            const assignee = (taskData?.assignees || []).find(item => String(item.userId) === String(userId));
+            const name = assignee?.fullName || 'this assignee';
+            const email = assignee?.email || name;
+            if (isProjectOwner(userId)) return;
+            const confirmed = await window.showConfirm({
+                title: 'Remove assignee',
+                message: `Remove ${email} from this task?`,
+                confirmText: 'Remove'
+            });
+            if (!confirmed) return;
+
+            try {
+                const response = await fetch(`/api/projects/${projectId}/tasks/${taskId}/assignees/${userId}`, {
+                    method: 'DELETE'
+                });
+                if (!response.ok) throw new Error('Unable to remove assignee');
+
+                taskData.assignees = (taskData.assignees || []).filter(item => String(item.userId) !== String(userId));
+                const nextAssignee = taskData.assignees[0];
+                taskData.assignedUserId = nextAssignee?.userId || null;
+                taskData.assignedUserName = nextAssignee?.fullName || null;
+                taskData.assignedUserEmail = nextAssignee?.email || null;
+                renderAssignees(taskData);
+            } catch (error) {
+                console.error(error);
+                alert('Could not remove this assignee.');
+            }
         }
 
         function renderChecklist() {
@@ -610,10 +775,18 @@
             }
 
             try {
-                const response = await fetch(`/api/projects/${projectId}/tasks/${taskId}`);
-                if (!response.ok) throw new Error('Task not found');
+                const [taskResponse, projectResponse] = await Promise.all([
+                    fetch(`/api/projects/${projectId}/tasks/${taskId}`),
+                    fetch(`/api/projects/${projectId}`)
+                ]);
+                if (!taskResponse.ok) throw new Error('Task not found');
 
-                const task = await response.json();
+                const task = await taskResponse.json();
+                if (projectResponse.ok) {
+                const project = await projectResponse.json();
+                projectCollaborators = project.collaborators || [];
+                projectOwnerId = project.userId || null;
+                }
                 loadingEl.classList.add('d-none');
                 contentEl.classList.remove('d-none');
                 renderTask(task);

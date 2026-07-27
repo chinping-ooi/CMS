@@ -218,6 +218,7 @@ using (var scope = app.Services.CreateScope())
         """
         ALTER TABLE users ADD COLUMN IF NOT EXISTS password_hash text NULL;
         ALTER TABLE users ADD COLUMN IF NOT EXISTS password_salt text NULL;
+        ALTER TABLE project ADD COLUMN IF NOT EXISTS user_id uuid NULL;
         CREATE UNIQUE INDEX IF NOT EXISTS ix_users_email_lower ON users (LOWER(email));
         """);
 
@@ -272,6 +273,43 @@ using (var scope = app.Services.CreateScope())
                 new { Hash = hash, Salt = salt, Email = "admin@cms.local" });
         }
     }
+
+    await connection.ExecuteAsync(
+        """
+        UPDATE project p
+        SET user_id = collaborator.user_id
+        FROM (
+            SELECT DISTINCT ON (project_id) project_id, user_id
+            FROM project_collaborator
+            ORDER BY project_id, joined_at, user_id
+        ) collaborator
+        WHERE p.id = collaborator.project_id
+          AND p.user_id IS NULL;
+
+        UPDATE project
+        SET user_id = (
+            SELECT id
+            FROM users
+            WHERE LOWER(email) = LOWER('admin@cms.local')
+            LIMIT 1
+        )
+        WHERE user_id IS NULL;
+
+        ALTER TABLE project ALTER COLUMN user_id SET NOT NULL;
+
+        DO $$
+        BEGIN
+            IF NOT EXISTS (
+                SELECT 1
+                FROM pg_constraint
+                WHERE conname = 'fk_project_user'
+            ) THEN
+                ALTER TABLE project
+                    ADD CONSTRAINT fk_project_user
+                    FOREIGN KEY (user_id) REFERENCES users (id);
+            END IF;
+        END $$;
+        """);
 }
 
 if (!app.Environment.IsDevelopment())

@@ -14,21 +14,6 @@ public class CustomerController : Controller
         _context = context;
     }
 
-    public async Task<IActionResult> Index()
-    {
-        try
-        {
-            await using var connection = await _context.CreateOpenConnectionAsync();
-            var customers = await connection.QueryAsync<Customer>("SELECT * FROM customer");
-            return View(customers);
-        }
-        catch (Exception ex)
-        {
-            ViewBag.DbError = ex.Message;
-            return View(Enumerable.Empty<Customer>());
-        }
-    }
-
     [HttpGet]
     public async Task<IActionResult> GetCustomer(int id)
     {
@@ -52,7 +37,7 @@ public class CustomerController : Controller
             TempData["ToastType"] = "danger";
             await using var connection = await _context.CreateOpenConnectionAsync();
             var customers = await connection.QueryAsync<Customer>("SELECT * FROM customer");
-            return View("Index", customers);
+            return View("~/Views/Home/Customer.cshtml", customers);
         }
 
         try
@@ -75,7 +60,7 @@ public class CustomerController : Controller
             TempData["ToastType"] = "danger";
         }
 
-        return RedirectToAction(nameof(Index));
+        return RedirectToAction("Customer", "Home");
     }
 
     [HttpPost]
@@ -86,7 +71,7 @@ public class CustomerController : Controller
         {
             TempData["ToastMessage"] = "Please correct the form errors before updating.";
             TempData["ToastType"] = "danger";
-            return RedirectToAction(nameof(Index));
+            return RedirectToAction("Customer", "Home");
         }
 
         try
@@ -115,7 +100,7 @@ public class CustomerController : Controller
             {
                 TempData["ToastMessage"] = "No matching customer was updated.";
                 TempData["ToastType"] = "danger";
-                return RedirectToAction(nameof(Index));
+                return RedirectToAction("Customer", "Home");
             }
 
             TempData["ToastMessage"] = "Customer updated successfully.";
@@ -127,7 +112,7 @@ public class CustomerController : Controller
             TempData["ToastType"] = "danger";
         }
 
-        return RedirectToAction(nameof(Index));
+        return RedirectToAction("Customer", "Home");
     }
 
     [HttpPost]
@@ -144,7 +129,7 @@ public class CustomerController : Controller
             {
                 TempData["ToastMessage"] = "Customer not found.";
                 TempData["ToastType"] = "danger";
-                return RedirectToAction(nameof(Index));
+                return RedirectToAction("Customer", "Home");
             }
 
             TempData["ToastMessage"] = "Customer deleted successfully.";
@@ -156,6 +141,6 @@ public class CustomerController : Controller
             TempData["ToastType"] = "danger";
         }
 
-        return RedirectToAction(nameof(Index));
+        return RedirectToAction("Customer", "Home");
     }
 }

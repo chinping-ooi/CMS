@@ -23,8 +23,8 @@ build_property._RazorSourceGeneratorDebug =
 build_property.EffectiveAnalysisLevelStyle = 10.0
 build_property.EnableCodeStyleSeverity = 
 
-[C:/Users/Ooi Chin Ping/Documents/GitHub/CMS/Views/Customer/Index.cshtml]
-build_metadata.AdditionalFiles.TargetPath = Vmlld3NcQ3VzdG9tZXJcSW5kZXguY3NodG1s
+[C:/Users/Ooi Chin Ping/Documents/GitHub/CMS/Views/Home/Customer.cshtml]
+build_metadata.AdditionalFiles.TargetPath = Vmlld3NcSG9tZVxDdXN0b21lci5jc2h0bWw=
 build_metadata.AdditionalFiles.CssScope = 
 
 [C:/Users/Ooi Chin Ping/Documents/GitHub/CMS/Views/Home/Index.cshtml]
@@ -37,10 +37,6 @@ build_metadata.AdditionalFiles.CssScope =
 
 [C:/Users/Ooi Chin Ping/Documents/GitHub/CMS/Views/Home/NotFoundPage.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcSG9tZVxOb3RGb3VuZFBhZ2UuY3NodG1s
-build_metadata.AdditionalFiles.CssScope = 
-
-[C:/Users/Ooi Chin Ping/Documents/GitHub/CMS/Views/Project/Index.cshtml]
-build_metadata.AdditionalFiles.TargetPath = Vmlld3NcUHJvamVjdFxJbmRleC5jc2h0bWw=
 build_metadata.AdditionalFiles.CssScope = 
 
 [C:/Users/Ooi Chin Ping/Documents/GitHub/CMS/Views/Shared/Error.cshtml]

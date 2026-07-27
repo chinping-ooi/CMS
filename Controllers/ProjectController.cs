@@ -1,10 +1,14 @@
 using CMS.Data;
 using CMS.Models;
 using Dapper;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
 
 namespace CMS.Controllers;
 
+[Authorize]
 public class ProjectController : Controller
 {
     private readonly DapperContext _context;
@@ -20,6 +24,13 @@ public class ProjectController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Create(Project project, [FromForm] Guid[]? collaboratorIds)
     {
+        var userIdValue = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
+            ?? User.FindFirst(JwtRegisteredClaimNames.Sub)?.Value;
+        if (!Guid.TryParse(userIdValue, out var ownerUserId))
+        {
+            return Unauthorized();
+        }
+
         if (project.Columns.Count == 0)
         {
             ModelState.AddModelError(nameof(project.Columns), "Add at least one column.");
@@ -50,6 +61,7 @@ public class ProjectController : Controller
         var projectToSave = new Project
         {
             Id = Guid.NewGuid(),
+            UserId = ownerUserId,
             Name = project.Name.Trim(),
             Description = string.IsNullOrWhiteSpace(project.Description)
                 ? null
@@ -77,6 +89,7 @@ public class ProjectController : Controller
                 })
                 .ToList(),
             Collaborators = validCollaboratorIds
+                .Where(userId => userId != ownerUserId)
                 .Select(userId => new ProjectCollaborator
                 {
                     ProjectId = Guid.Empty,
@@ -86,6 +99,14 @@ public class ProjectController : Controller
                 })
                 .ToList(),
         };
+
+        projectToSave.Collaborators.Add(new ProjectCollaborator
+        {
+            ProjectId = Guid.Empty,
+            UserId = ownerUserId,
+            Role = "owner",
+            JoinedAt = DateTime.UtcNow,
+        });
 
         foreach (var column in projectToSave.Columns)
         {
@@ -108,7 +129,7 @@ public class ProjectController : Controller
         {
             Console.WriteLine($"Starting project insert: {projectToSave.Name} ({projectToSave.Id})");
 
-            const string insertProjectSql = "INSERT INTO project (id, name, description, created_at, updated_at) VALUES (@Id, @Name, @Description, @CreatedAt, @UpdatedAt)";
+            const string insertProjectSql = "INSERT INTO project (id, user_id, name, description, created_at, updated_at) VALUES (@Id, @UserId, @Name, @Description, @CreatedAt, @UpdatedAt)";
             await connection.ExecuteAsync(insertProjectSql, projectToSave, transaction);
 
             const string insertColumnSql = "INSERT INTO project_column (id, project_id, name, position, created_at) VALUES (@Id, @ProjectId, @Name, @Position, @CreatedAt)";
@@ -150,8 +171,9 @@ public class ProjectController : Controller
             Console.Error.WriteLine($"Project creation failed. Name={project.Name}, Columns={project.Columns.Count}, Tags={project.Tags.Count}, Collaborators={selectedCollaboratorIds.Length}");
             Console.Error.WriteLine(exception.ToString());
             var errorMessage = exception.GetBaseException().Message;
-            ModelState.AddModelError(string.Empty, $"The project could not be saved: {errorMessage}");
-            return View("Index", project);
+            TempData["ToastMessage"] = $"The project could not be saved: {errorMessage}";
+            TempData["ToastType"] = "danger";
+            return RedirectToAction("Index", "Task");
         }
 
         return RedirectToAction("Index", "Task", new { id = projectToSave.Id });

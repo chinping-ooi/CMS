@@ -508,14 +508,12 @@ C:\Users\Ooi Chin Ping\Documents\GitHub\CMS\obj\Debug\net10.0\CMS.csproj.CoreCom
 C:\Users\Ooi Chin Ping\Documents\GitHub\CMS\obj\Debug\net10.0\CMS.MvcApplicationPartsAssemblyInfo.cache
 C:\Users\Ooi Chin Ping\Documents\GitHub\CMS\obj\Debug\net10.0\CMS.RazorAssemblyInfo.cache
 C:\Users\Ooi Chin Ping\Documents\GitHub\CMS\obj\Debug\net10.0\CMS.RazorAssemblyInfo.cs
-C:\Users\Ooi Chin Ping\Documents\GitHub\CMS\obj\Debug\net10.0\CMS.sourcelink.json
 C:\Users\Ooi Chin Ping\Documents\GitHub\CMS\obj\Debug\net10.0\rjimswa.dswa.cache.json
 C:\Users\Ooi Chin Ping\Documents\GitHub\CMS\obj\Debug\net10.0\rjsmrazor.dswa.cache.json
 C:\Users\Ooi Chin Ping\Documents\GitHub\CMS\obj\Debug\net10.0\rjsmcshtml.dswa.cache.json
 C:\Users\Ooi Chin Ping\Documents\GitHub\CMS\obj\Debug\net10.0\scopedcss\Views\Shared\_Layout.cshtml.rz.scp.css
 C:\Users\Ooi Chin Ping\Documents\GitHub\CMS\obj\Debug\net10.0\scopedcss\bundle\CMS.styles.css
 C:\Users\Ooi Chin Ping\Documents\GitHub\CMS\obj\Debug\net10.0\scopedcss\projectbundle\CMS.bundle.scp.css
-C:\Users\Ooi Chin Ping\Documents\GitHub\CMS\obj\Debug\net10.0\compressed\p2n5wf4ugt-{0}-rnff2yqa0q-rnff2yqa0q.gz
 C:\Users\Ooi Chin Ping\Documents\GitHub\CMS\obj\Debug\net10.0\compressed\vrgpy7m1qi-{0}-61n19gt1b8-61n19gt1b8.gz
 C:\Users\Ooi Chin Ping\Documents\GitHub\CMS\obj\Debug\net10.0\compressed\1jua8mngf7-{0}-7h7413jxg5-7h7413jxg5.gz
 C:\Users\Ooi Chin Ping\Documents\GitHub\CMS\obj\Debug\net10.0\compressed\hgooh3sj9w-{0}-t1cqhe9u97-t1cqhe9u97.gz
@@ -587,7 +585,6 @@ C:\Users\Ooi Chin Ping\Documents\GitHub\CMS\obj\Debug\net10.0\swae.build.ex.cach
 C:\Users\Ooi Chin Ping\Documents\GitHub\CMS\obj\Debug\net10.0\CMS.csproj.Up2Date
 C:\Users\Ooi Chin Ping\Documents\GitHub\CMS\obj\Debug\net10.0\CMS.dll
 C:\Users\Ooi Chin Ping\Documents\GitHub\CMS\obj\Debug\net10.0\refint\CMS.dll
-C:\Users\Ooi Chin Ping\Documents\GitHub\CMS\obj\Debug\net10.0\CMS.pdb
 C:\Users\Ooi Chin Ping\Documents\GitHub\CMS\obj\Debug\net10.0\CMS.genruntimeconfig.cache
 C:\Users\Ooi Chin Ping\Documents\GitHub\CMS\obj\Debug\net10.0\ref\CMS.dll
 C:\Users\Ooi Chin Ping\Documents\GitHub\CMS\bin\Debug\net10.0\Microsoft.AspNetCore.Authentication.JwtBearer.dll
@@ -598,3 +595,142 @@ C:\Users\Ooi Chin Ping\Documents\GitHub\CMS\bin\Debug\net10.0\Microsoft.Identity
 C:\Users\Ooi Chin Ping\Documents\GitHub\CMS\bin\Debug\net10.0\Microsoft.IdentityModel.Protocols.OpenIdConnect.dll
 C:\Users\Ooi Chin Ping\Documents\GitHub\CMS\bin\Debug\net10.0\Microsoft.IdentityModel.Tokens.dll
 C:\Users\Ooi Chin Ping\Documents\GitHub\CMS\bin\Debug\net10.0\System.IdentityModel.Tokens.Jwt.dll
+C:\Users\OOICHI~1\AppData\Local\Temp\cms-verify\appsettings.Development.json
+C:\Users\OOICHI~1\AppData\Local\Temp\cms-verify\appsettings.json
+C:\Users\OOICHI~1\AppData\Local\Temp\cms-verify\dotnet-tools.json
+C:\Users\OOICHI~1\AppData\Local\Temp\cms-verify\CMS.staticwebassets.runtime.json
+C:\Users\OOICHI~1\AppData\Local\Temp\cms-verify\CMS.staticwebassets.endpoints.json
+C:\Users\OOICHI~1\AppData\Local\Temp\cms-verify\CMS.deps.json
+C:\Users\OOICHI~1\AppData\Local\Temp\cms-verify\CMS.runtimeconfig.json
+C:\Users\OOICHI~1\AppData\Local\Temp\cms-verify\CMS.dll
+C:\Users\Ooi Chin Ping\Documents\GitHub\CMS\.codex\modal-verify\appsettings.Development.json
+C:\Users\Ooi Chin Ping\Documents\GitHub\CMS\.codex\modal-verify\appsettings.json
+C:\Users\Ooi Chin Ping\Documents\GitHub\CMS\.codex\modal-verify\dotnet-tools.json
+C:\Users\Ooi Chin Ping\Documents\GitHub\CMS\.codex\modal-verify\CMS.staticwebassets.runtime.json
+C:\Users\Ooi Chin Ping\Documents\GitHub\CMS\.codex\modal-verify\CMS.staticwebassets.endpoints.json
+C:\Users\Ooi Chin Ping\Documents\GitHub\CMS\.codex\modal-verify\CMS.exe
+C:\Users\Ooi Chin Ping\Documents\GitHub\CMS\.codex\modal-verify\CMS.deps.json
+C:\Users\Ooi Chin Ping\Documents\GitHub\CMS\.codex\modal-verify\CMS.runtimeconfig.json
+C:\Users\Ooi Chin Ping\Documents\GitHub\CMS\.codex\modal-verify\CMS.dll
+C:\Users\Ooi Chin Ping\Documents\GitHub\CMS\.codex\modal-verify\Dapper.dll
+C:\Users\Ooi Chin Ping\Documents\GitHub\CMS\.codex\modal-verify\Microsoft.AspNetCore.Authentication.JwtBearer.dll
+C:\Users\Ooi Chin Ping\Documents\GitHub\CMS\.codex\modal-verify\Microsoft.IdentityModel.Abstractions.dll
+C:\Users\Ooi Chin Ping\Documents\GitHub\CMS\.codex\modal-verify\Microsoft.IdentityModel.JsonWebTokens.dll
+C:\Users\Ooi Chin Ping\Documents\GitHub\CMS\.codex\modal-verify\Microsoft.IdentityModel.Logging.dll
+C:\Users\Ooi Chin Ping\Documents\GitHub\CMS\.codex\modal-verify\Microsoft.IdentityModel.Protocols.dll
+C:\Users\Ooi Chin Ping\Documents\GitHub\CMS\.codex\modal-verify\Microsoft.IdentityModel.Protocols.OpenIdConnect.dll
+C:\Users\Ooi Chin Ping\Documents\GitHub\CMS\.codex\modal-verify\Microsoft.IdentityModel.Tokens.dll
+C:\Users\Ooi Chin Ping\Documents\GitHub\CMS\.codex\modal-verify\Npgsql.dll
+C:\Users\Ooi Chin Ping\Documents\GitHub\CMS\.codex\modal-verify\System.IdentityModel.Tokens.Jwt.dll
+C:\Users\Ooi Chin Ping\Documents\GitHub\CMS\.codex\column-verify\Dapper.dll
+C:\Users\Ooi Chin Ping\Documents\GitHub\CMS\.codex\column-verify\Microsoft.AspNetCore.Authentication.JwtBearer.dll
+C:\Users\Ooi Chin Ping\Documents\GitHub\CMS\.codex\column-verify\Microsoft.IdentityModel.Abstractions.dll
+C:\Users\Ooi Chin Ping\Documents\GitHub\CMS\.codex\column-verify\Microsoft.IdentityModel.JsonWebTokens.dll
+C:\Users\Ooi Chin Ping\Documents\GitHub\CMS\.codex\column-verify\Microsoft.IdentityModel.Logging.dll
+C:\Users\Ooi Chin Ping\Documents\GitHub\CMS\.codex\column-verify\Microsoft.IdentityModel.Protocols.dll
+C:\Users\Ooi Chin Ping\Documents\GitHub\CMS\.codex\column-verify\Microsoft.IdentityModel.Protocols.OpenIdConnect.dll
+C:\Users\Ooi Chin Ping\Documents\GitHub\CMS\.codex\column-verify\Microsoft.IdentityModel.Tokens.dll
+C:\Users\Ooi Chin Ping\Documents\GitHub\CMS\.codex\column-verify\Npgsql.dll
+C:\Users\Ooi Chin Ping\Documents\GitHub\CMS\.codex\column-verify\System.IdentityModel.Tokens.Jwt.dll
+C:\Users\Ooi Chin Ping\Documents\GitHub\CMS\artifacts\column-verify\appsettings.Development.json
+C:\Users\Ooi Chin Ping\Documents\GitHub\CMS\artifacts\column-verify\appsettings.json
+C:\Users\Ooi Chin Ping\Documents\GitHub\CMS\artifacts\column-verify\dotnet-tools.json
+C:\Users\Ooi Chin Ping\Documents\GitHub\CMS\artifacts\column-verify\CMS.staticwebassets.runtime.json
+C:\Users\Ooi Chin Ping\Documents\GitHub\CMS\artifacts\column-verify\CMS.staticwebassets.endpoints.json
+C:\Users\Ooi Chin Ping\Documents\GitHub\CMS\artifacts\column-verify\CMS.deps.json
+C:\Users\Ooi Chin Ping\Documents\GitHub\CMS\artifacts\column-verify\CMS.runtimeconfig.json
+C:\Users\Ooi Chin Ping\Documents\GitHub\CMS\artifacts\column-verify\CMS.dll
+C:\Users\Ooi Chin Ping\Documents\GitHub\CMS\artifacts\column-verify\Dapper.dll
+C:\Users\Ooi Chin Ping\Documents\GitHub\CMS\artifacts\column-verify\Microsoft.AspNetCore.Authentication.JwtBearer.dll
+C:\Users\Ooi Chin Ping\Documents\GitHub\CMS\artifacts\column-verify\Microsoft.IdentityModel.Abstractions.dll
+C:\Users\Ooi Chin Ping\Documents\GitHub\CMS\artifacts\column-verify\Microsoft.IdentityModel.JsonWebTokens.dll
+C:\Users\Ooi Chin Ping\Documents\GitHub\CMS\artifacts\column-verify\Microsoft.IdentityModel.Logging.dll
+C:\Users\Ooi Chin Ping\Documents\GitHub\CMS\artifacts\column-verify\Microsoft.IdentityModel.Protocols.dll
+C:\Users\Ooi Chin Ping\Documents\GitHub\CMS\artifacts\column-verify\Microsoft.IdentityModel.Protocols.OpenIdConnect.dll
+C:\Users\Ooi Chin Ping\Documents\GitHub\CMS\artifacts\column-verify\Microsoft.IdentityModel.Tokens.dll
+C:\Users\Ooi Chin Ping\Documents\GitHub\CMS\artifacts\column-verify\Npgsql.dll
+C:\Users\Ooi Chin Ping\Documents\GitHub\CMS\artifacts\column-verify\System.IdentityModel.Tokens.Jwt.dll
+C:\Users\Ooi Chin Ping\Documents\GitHub\CMS\artifacts\column-dnd-verify\appsettings.Development.json
+C:\Users\Ooi Chin Ping\Documents\GitHub\CMS\artifacts\column-dnd-verify\appsettings.json
+C:\Users\Ooi Chin Ping\Documents\GitHub\CMS\artifacts\column-dnd-verify\dotnet-tools.json
+C:\Users\Ooi Chin Ping\Documents\GitHub\CMS\artifacts\column-dnd-verify\CMS.staticwebassets.runtime.json
+C:\Users\Ooi Chin Ping\Documents\GitHub\CMS\artifacts\column-dnd-verify\CMS.staticwebassets.endpoints.json
+C:\Users\Ooi Chin Ping\Documents\GitHub\CMS\artifacts\column-dnd-verify\CMS.deps.json
+C:\Users\Ooi Chin Ping\Documents\GitHub\CMS\artifacts\column-dnd-verify\CMS.runtimeconfig.json
+C:\Users\Ooi Chin Ping\Documents\GitHub\CMS\artifacts\column-dnd-verify\CMS.dll
+C:\Users\Ooi Chin Ping\Documents\GitHub\CMS\artifacts\column-dnd-verify\Dapper.dll
+C:\Users\Ooi Chin Ping\Documents\GitHub\CMS\artifacts\column-dnd-verify\Microsoft.AspNetCore.Authentication.JwtBearer.dll
+C:\Users\Ooi Chin Ping\Documents\GitHub\CMS\artifacts\column-dnd-verify\Microsoft.IdentityModel.Abstractions.dll
+C:\Users\Ooi Chin Ping\Documents\GitHub\CMS\artifacts\column-dnd-verify\Microsoft.IdentityModel.JsonWebTokens.dll
+C:\Users\Ooi Chin Ping\Documents\GitHub\CMS\artifacts\column-dnd-verify\Microsoft.IdentityModel.Logging.dll
+C:\Users\Ooi Chin Ping\Documents\GitHub\CMS\artifacts\column-dnd-verify\Microsoft.IdentityModel.Protocols.dll
+C:\Users\Ooi Chin Ping\Documents\GitHub\CMS\artifacts\column-dnd-verify\Microsoft.IdentityModel.Protocols.OpenIdConnect.dll
+C:\Users\Ooi Chin Ping\Documents\GitHub\CMS\artifacts\column-dnd-verify\Microsoft.IdentityModel.Tokens.dll
+C:\Users\Ooi Chin Ping\Documents\GitHub\CMS\artifacts\column-dnd-verify\Npgsql.dll
+C:\Users\Ooi Chin Ping\Documents\GitHub\CMS\artifacts\column-dnd-verify\System.IdentityModel.Tokens.Jwt.dll
+C:\Users\Ooi Chin Ping\Documents\GitHub\CMS\artifacts\invite-audit-verify\appsettings.Development.json
+C:\Users\Ooi Chin Ping\Documents\GitHub\CMS\artifacts\invite-audit-verify\appsettings.json
+C:\Users\Ooi Chin Ping\Documents\GitHub\CMS\artifacts\invite-audit-verify\dotnet-tools.json
+C:\Users\Ooi Chin Ping\Documents\GitHub\CMS\artifacts\invite-audit-verify\CMS.staticwebassets.runtime.json
+C:\Users\Ooi Chin Ping\Documents\GitHub\CMS\artifacts\invite-audit-verify\CMS.staticwebassets.endpoints.json
+C:\Users\Ooi Chin Ping\Documents\GitHub\CMS\artifacts\invite-audit-verify\CMS.deps.json
+C:\Users\Ooi Chin Ping\Documents\GitHub\CMS\artifacts\invite-audit-verify\CMS.runtimeconfig.json
+C:\Users\Ooi Chin Ping\Documents\GitHub\CMS\artifacts\invite-audit-verify\CMS.dll
+C:\Users\Ooi Chin Ping\Documents\GitHub\CMS\artifacts\invite-audit-verify\Dapper.dll
+C:\Users\Ooi Chin Ping\Documents\GitHub\CMS\artifacts\invite-audit-verify\Microsoft.AspNetCore.Authentication.JwtBearer.dll
+C:\Users\Ooi Chin Ping\Documents\GitHub\CMS\artifacts\invite-audit-verify\Microsoft.IdentityModel.Abstractions.dll
+C:\Users\Ooi Chin Ping\Documents\GitHub\CMS\artifacts\invite-audit-verify\Microsoft.IdentityModel.JsonWebTokens.dll
+C:\Users\Ooi Chin Ping\Documents\GitHub\CMS\artifacts\invite-audit-verify\Microsoft.IdentityModel.Logging.dll
+C:\Users\Ooi Chin Ping\Documents\GitHub\CMS\artifacts\invite-audit-verify\Microsoft.IdentityModel.Protocols.dll
+C:\Users\Ooi Chin Ping\Documents\GitHub\CMS\artifacts\invite-audit-verify\Microsoft.IdentityModel.Protocols.OpenIdConnect.dll
+C:\Users\Ooi Chin Ping\Documents\GitHub\CMS\artifacts\invite-audit-verify\Microsoft.IdentityModel.Tokens.dll
+C:\Users\Ooi Chin Ping\Documents\GitHub\CMS\artifacts\invite-audit-verify\Npgsql.dll
+C:\Users\Ooi Chin Ping\Documents\GitHub\CMS\artifacts\invite-audit-verify\System.IdentityModel.Tokens.Jwt.dll
+C:\Users\Ooi Chin Ping\Documents\GitHub\CMS\artifacts\collaborator-remove-verify\appsettings.Development.json
+C:\Users\Ooi Chin Ping\Documents\GitHub\CMS\artifacts\collaborator-remove-verify\appsettings.json
+C:\Users\Ooi Chin Ping\Documents\GitHub\CMS\artifacts\collaborator-remove-verify\dotnet-tools.json
+C:\Users\Ooi Chin Ping\Documents\GitHub\CMS\artifacts\collaborator-remove-verify\CMS.staticwebassets.runtime.json
+C:\Users\Ooi Chin Ping\Documents\GitHub\CMS\artifacts\collaborator-remove-verify\CMS.staticwebassets.endpoints.json
+C:\Users\Ooi Chin Ping\Documents\GitHub\CMS\artifacts\collaborator-remove-verify\CMS.deps.json
+C:\Users\Ooi Chin Ping\Documents\GitHub\CMS\artifacts\collaborator-remove-verify\CMS.runtimeconfig.json
+C:\Users\Ooi Chin Ping\Documents\GitHub\CMS\artifacts\collaborator-remove-verify\CMS.dll
+C:\Users\Ooi Chin Ping\Documents\GitHub\CMS\artifacts\collaborator-remove-verify\Dapper.dll
+C:\Users\Ooi Chin Ping\Documents\GitHub\CMS\artifacts\collaborator-remove-verify\Microsoft.AspNetCore.Authentication.JwtBearer.dll
+C:\Users\Ooi Chin Ping\Documents\GitHub\CMS\artifacts\collaborator-remove-verify\Microsoft.IdentityModel.Abstractions.dll
+C:\Users\Ooi Chin Ping\Documents\GitHub\CMS\artifacts\collaborator-remove-verify\Microsoft.IdentityModel.JsonWebTokens.dll
+C:\Users\Ooi Chin Ping\Documents\GitHub\CMS\artifacts\collaborator-remove-verify\Microsoft.IdentityModel.Logging.dll
+C:\Users\Ooi Chin Ping\Documents\GitHub\CMS\artifacts\collaborator-remove-verify\Microsoft.IdentityModel.Protocols.dll
+C:\Users\Ooi Chin Ping\Documents\GitHub\CMS\artifacts\collaborator-remove-verify\Microsoft.IdentityModel.Protocols.OpenIdConnect.dll
+C:\Users\Ooi Chin Ping\Documents\GitHub\CMS\artifacts\collaborator-remove-verify\Microsoft.IdentityModel.Tokens.dll
+C:\Users\Ooi Chin Ping\Documents\GitHub\CMS\artifacts\collaborator-remove-verify\Npgsql.dll
+C:\Users\Ooi Chin Ping\Documents\GitHub\CMS\artifacts\collaborator-remove-verify\System.IdentityModel.Tokens.Jwt.dll
+C:\Users\Ooi Chin Ping\Documents\GitHub\CMS\artifacts\collaborator-unassign-verify\appsettings.Development.json
+C:\Users\Ooi Chin Ping\Documents\GitHub\CMS\artifacts\collaborator-unassign-verify\appsettings.json
+C:\Users\Ooi Chin Ping\Documents\GitHub\CMS\artifacts\collaborator-unassign-verify\dotnet-tools.json
+C:\Users\Ooi Chin Ping\Documents\GitHub\CMS\artifacts\collaborator-unassign-verify\CMS.staticwebassets.runtime.json
+C:\Users\Ooi Chin Ping\Documents\GitHub\CMS\artifacts\collaborator-unassign-verify\CMS.staticwebassets.endpoints.json
+C:\Users\Ooi Chin Ping\Documents\GitHub\CMS\artifacts\collaborator-unassign-verify\CMS.deps.json
+C:\Users\Ooi Chin Ping\Documents\GitHub\CMS\artifacts\collaborator-unassign-verify\CMS.runtimeconfig.json
+C:\Users\Ooi Chin Ping\Documents\GitHub\CMS\artifacts\collaborator-unassign-verify\CMS.dll
+C:\Users\Ooi Chin Ping\Documents\GitHub\CMS\artifacts\collaborator-unassign-verify\Dapper.dll
+C:\Users\Ooi Chin Ping\Documents\GitHub\CMS\artifacts\collaborator-unassign-verify\Microsoft.AspNetCore.Authentication.JwtBearer.dll
+C:\Users\Ooi Chin Ping\Documents\GitHub\CMS\artifacts\collaborator-unassign-verify\Microsoft.IdentityModel.Abstractions.dll
+C:\Users\Ooi Chin Ping\Documents\GitHub\CMS\artifacts\collaborator-unassign-verify\Microsoft.IdentityModel.JsonWebTokens.dll
+C:\Users\Ooi Chin Ping\Documents\GitHub\CMS\artifacts\collaborator-unassign-verify\Microsoft.IdentityModel.Logging.dll
+C:\Users\Ooi Chin Ping\Documents\GitHub\CMS\artifacts\collaborator-unassign-verify\Microsoft.IdentityModel.Protocols.dll
+C:\Users\Ooi Chin Ping\Documents\GitHub\CMS\artifacts\collaborator-unassign-verify\Microsoft.IdentityModel.Protocols.OpenIdConnect.dll
+C:\Users\Ooi Chin Ping\Documents\GitHub\CMS\artifacts\collaborator-unassign-verify\Microsoft.IdentityModel.Tokens.dll
+C:\Users\Ooi Chin Ping\Documents\GitHub\CMS\artifacts\collaborator-unassign-verify\Npgsql.dll
+C:\Users\Ooi Chin Ping\Documents\GitHub\CMS\artifacts\collaborator-unassign-verify\System.IdentityModel.Tokens.Jwt.dll
+C:\Users\Ooi Chin Ping\Documents\GitHub\CMS\obj\Debug\net10.0\compressed\p2n5wf4ugt-{0}-zihzr4bs6l-zihzr4bs6l.gz
+C:\Users\OOICHI~1\AppData\Local\Temp\cms-build-check\appsettings.Development.json
+C:\Users\OOICHI~1\AppData\Local\Temp\cms-build-check\appsettings.json
+C:\Users\OOICHI~1\AppData\Local\Temp\cms-build-check\dotnet-tools.json
+C:\Users\OOICHI~1\AppData\Local\Temp\cms-build-check\CMS.staticwebassets.runtime.json
+C:\Users\OOICHI~1\AppData\Local\Temp\cms-build-check\CMS.staticwebassets.endpoints.json
+C:\Users\OOICHI~1\AppData\Local\Temp\cms-build-check\CMS.exe
+C:\Users\OOICHI~1\AppData\Local\Temp\cms-build-check\CMS.deps.json
+C:\Users\OOICHI~1\AppData\Local\Temp\cms-build-check\CMS.runtimeconfig.json
+C:\Users\OOICHI~1\AppData\Local\Temp\cms-build-check\CMS.dll
+C:\Users\Ooi Chin Ping\Documents\GitHub\CMS\obj\Debug\net10.0\CMS.sourcelink.json
+C:\Users\Ooi Chin Ping\Documents\GitHub\CMS\obj\Debug\net10.0\CMS.pdb

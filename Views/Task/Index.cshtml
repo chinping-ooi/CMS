@@ -61,6 +61,14 @@
         box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
     }
 
+    .kb-add-column {
+        min-width: 300px;
+        height: fit-content;
+        padding: 12px;
+        border: 1px dashed #aeb9c8;
+        background: #f8fafc;
+    }
+
     .kb-header {
         display: flex;
         justify-content: space-between;
@@ -163,11 +171,32 @@
         box-shadow: 0 0 0 1px rgba(47, 111, 237, 0.15), 0 1px 2px rgba(15, 23, 42, 0.04);
     }
 
-    .kb-dot {
-        width: 10px;
-        height: 10px;
-        background: #2f6fed;
-        border-radius: 50%;
+    .kb-column.column-dragging {
+        opacity: 0.5;
+    }
+
+    .kb-card-tags {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.35rem;
+        min-height: 1.5rem;
+    }
+
+    .kb-task-tag {
+        display: inline-flex;
+        align-items: center;
+        max-width: 100%;
+        padding: 0.2rem 0.45rem;
+        border: 1px solid var(--tag-color);
+        border-radius: 0.35rem;
+        background: color-mix(in srgb, var(--tag-color) 18%, white 82%);
+        color: #374151;
+        font-size: 0.72rem;
+        font-weight: 600;
+        line-height: 1.1;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
     }
 
     .kb-card-footer {
@@ -248,7 +277,6 @@
         right: 0;
         z-index: 1050;
         background: #fff;
-        border: 1px solid #dee2e6;
         border-radius: .375rem;
         max-height: 260px;
         overflow-y: auto;
@@ -305,6 +333,52 @@
     .kb-project-selector-menu .dropdown-item:hover {
         background: #f3f6ff;
         color: #1c56d3;
+    }
+
+    #filter-button.kb-project-selector {
+        min-width: auto;
+        width: fit-content;
+    }
+
+    .kb-owner-avatar,
+    .kb-assignee-avatar {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        flex: 0 0 auto;
+        border: 2px solid #fff;
+        border-radius: 50%;
+        background: #e8f0ff;
+        color: #1c56d3;
+        font-size: 0.7rem;
+        font-weight: 700;
+        line-height: 1;
+    }
+
+    .kb-owner-avatar {
+        width: 2.5rem;
+        height: 2.5rem;
+    }
+
+    .kb-assignee-group {
+        display: inline-flex;
+        align-items: center;
+        padding-left: 0.3rem;
+    }
+
+    .kb-assignee-avatar {
+        width: 1.7rem;
+        height: 1.7rem;
+        margin-left: -0.5rem;
+    }
+
+    .kb-assignee-avatar:first-child {
+        margin-left: 0;
+    }
+
+    .kb-assignee-avatar.is-overflow {
+        background: #334155;
+        color: #fff;
     }
 
     .kb-selector-dropdown-title {
@@ -365,11 +439,11 @@ else
                     <ul class="dropdown-menu kb-project-selector-menu" id="project-dropdown-menu" aria-labelledby="project-name-display"></ul>
                 </div>
 
-                <button class="btn kb-btn-light" type="button" id="delete-project-button">
+                <button class="btn btn-delete" type="button" id="delete-project-button">
                     <i class="bi bi-trash"></i>
                 </button>
 
-                <button class="btn kb-btn-primary rounded" type="button" id="new-project-button">
+                <button class="btn btn-action" type="button" id="new-project-button">
                     <i class="bi bi-plus-lg"></i>
                     New Project
                 </button>
@@ -380,7 +454,7 @@ else
                     <span class="input-group-text bg-white">
                         <i class="bi bi-search"></i>
                     </span>
-                    <input id="task-search-input" type="text" class="form-control" placeholder="Search tasks...">
+                    <input id="task-search-input" type="search" class="form-control" placeholder="Search task titles..." aria-label="Search task titles" autocomplete="off">
                 </div>
 
                 <div class="dropdown">
@@ -390,16 +464,17 @@ else
                     <div class="dropdown-menu kb-project-selector-menu" id="tag-filter-dropdown" aria-labelledby="filter-button" style="min-width: 170px;">
                         <div class="d-flex align-items-center justify-content-between kb-selector-dropdown-title mb-2">
                             <span class="fw-semibold">Filter by tags</span>
-                            <button type="button" class="btn btn-outline-secondary kb-reset-button" id="clear-tag-filter-button">Reset</button>
+                            <button type="button" class="btn btn-outline-secondary kb-reset-button" id="clear-tag-filter-button">Clear</button>
                         </div>
                         <div id="tag-filter-list" class="d-flex flex-column gap-2"></div>
                     </div>
                 </div>
 
-                <button class="btn kb-btn-primary rounded" type="button" id="invite-button">
+                <button class="btn btn-action" type="button" id="invite-button">
                     <i class="bi bi-person-plus"></i>
                     Invite
                 </button>
+                <span id="project-owner-avatar" class="kb-owner-avatar border" title="Project owner" aria-label="Project owner">?</span>
             </div>
         </div>
     </div>
@@ -451,7 +526,7 @@ else
             {
                 <div class="kb-card rounded mb-3">
                     <div class="d-flex justify-content-between align-items-center">
-                        <div class="kb-dot"></div>
+                        <div class="kb-card-tags"></div>
                         <div class="dropdown kb-card-dropdown">
                             <button class="btn p-0" type="button" data-bs-toggle="dropdown" aria-expanded="false">
                                 <i class="bi bi-three-dots-vertical"></i>
@@ -538,10 +613,10 @@ else
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
-                <div class="mb-3 position-relative">
+                <div class="position-relative">
                     <label for="invite-user-search" class="form-label">User email or name</label>
                     <input type="text" id="invite-user-search" class="form-control" placeholder="Search users..." autocomplete="off">
-                    <div id="invite-user-results" class="list-group invite-search-dropdown"></div>
+                    <div id="invite-user-results" class="list-group invite-search-dropdown" hidden></div>
                 </div>
                 <div class="mb-3">
                     <div id="selected-collaborators" class="d-flex flex-wrap gap-2"></div>
@@ -552,8 +627,8 @@ else
                 </div>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-cancel" data-bs-dismiss="modal">Cancel</button>
-                <button type="button" class="btn btn-action" id="invite-submit-button">Submit</button>
+                <button type="button" class="btn btn-cancel px-4" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-action px-4" id="invite-submit-button">Submit</button>
             </div>
         </div>
     </div>
@@ -586,6 +661,7 @@ else
     const projectNameDisplay = document.getElementById('project-name-display');
     const projectDescription = document.getElementById('project-description');
     const projectMeta = document.getElementById('project-meta');
+    const projectOwnerAvatar = document.getElementById('project-owner-avatar');
     const tagFilterList = document.getElementById('tag-filter-list');
     const clearTagFilterButton = document.getElementById('clear-tag-filter-button');
     const taskSearchInput = document.getElementById('task-search-input');
@@ -678,6 +754,8 @@ else
             projectDescription.textContent = project.description || '';
         }
 
+        renderProjectOwner(project);
+
         if (projectMeta) {
             projectMeta.innerHTML = '';
 
@@ -737,7 +815,7 @@ else
         const tasks = projectData?.tasks || [];
         const allTagsSelected = projectData?.tags && selectedTagIds.size === projectData.tags.length;
         return tasks.filter(task => {
-            const matchesSearch = !searchTerm || task.title.toLowerCase().includes(searchTerm.toLowerCase());
+            const matchesSearch = !searchTerm || String(task.title || '').toLocaleLowerCase().includes(searchTerm);
             const taskTags = task.tags || [];
             const matchesTag = selectedTagIds.size === 0
                 || allTagsSelected
@@ -783,6 +861,67 @@ else
         });
     }
 
+    function escapeHtml(value) {
+        const element = document.createElement('div');
+        element.textContent = value || '';
+        return element.innerHTML;
+    }
+
+    function getInitials(name) {
+        return (name || '?')
+            .trim()
+            .split(/\s+/)
+            .filter(Boolean)
+            .map(part => part.charAt(0))
+            .join('')
+            .slice(0, 2)
+            .toUpperCase() || '?';
+    }
+
+    function renderProjectOwner(project) {
+        if (!projectOwnerAvatar) {
+            return;
+        }
+
+        const owner = (project.collaborators || []).find(collaborator =>
+            (collaborator.role || '').toLowerCase() === 'owner'
+            || String(collaborator.userId) === String(project.userId));
+        const ownerName = owner?.fullName || owner?.email || 'Project owner';
+        projectOwnerAvatar.textContent = getInitials(ownerName);
+        projectOwnerAvatar.title = ownerName;
+        projectOwnerAvatar.setAttribute('aria-label', ownerName);
+    }
+
+    function renderTaskTags(tags) {
+        return (tags || []).map(tag =>
+            `<span class="kb-task-tag" style="--tag-color: ${escapeHtml(tag.color || '#6f42c1')}">${escapeHtml(tag.name)}</span>`
+        ).join('');
+    }
+
+    function renderAssignees(task) {
+        const assignees = task.assignees?.length
+            ? task.assignees
+            : task.assignedUserName
+                ? [{ fullName: task.assignedUserName }]
+                : [];
+
+        if (!assignees.length) {
+            return '<span>No assignee</span>';
+        }
+
+        const visibleAssignees = assignees.length > 3 ? assignees.slice(0, 2) : assignees;
+        const avatars = visibleAssignees.map(assignee => {
+            const name = assignee.fullName || assignee.email || 'Assignee';
+            return `<span class="kb-assignee-avatar" title="${escapeHtml(name)}">${getInitials(name)}</span>`;
+        });
+
+        if (assignees.length > 3) {
+            avatars.push(`<span class="kb-assignee-avatar is-overflow" title="${assignees.length - 2} more assignees">+${assignees.length - 2}</span>`);
+        }
+
+        return `<span class="kb-assignee-group">${avatars.join('')}</span>`;
+    }
+
     function updateTaskBoard() {
         if (!boardContainer || !projectData) {
             return;
@@ -796,6 +935,7 @@ else
             const columnTasks = tasks.filter(task => task.columnId === column.id);
             const columnElement = document.createElement('div');
             columnElement.className = 'kb-column rounded-3';
+            columnElement.draggable = true;
             columnElement.innerHTML = `
                 <div class="kb-header" data-column-id="${column.id}">
                     <input type="text" class="kb-title-input" value="${column.name}" disabled aria-label="Column name">
@@ -825,10 +965,11 @@ else
                 card.dataset.taskId = task.id;
                 card.dataset.columnId = column.id;
                 const dueDate = task.dueDate ? new Date(task.dueDate).toLocaleDateString() : 'No date';
-                const assignedUser = task.assignedUserName ? `<span>${task.assignedUserName}</span>` : '<span>No assignee</span>';
+                const assignees = renderAssignees(task);
+                const taskTags = renderTaskTags(task.tags);
                 card.innerHTML = `
                     <div class="d-flex justify-content-between align-items-center">
-                        <div class="kb-dot"></div>
+                        <div class="kb-card-tags">${taskTags}</div>
                         <div class="dropdown kb-card-dropdown">
                             <button class="btn p-0" type="button" data-bs-toggle="dropdown" aria-expanded="false">
                                 <i class="bi bi-three-dots-vertical"></i>
@@ -845,10 +986,11 @@ else
                             <i class="bi bi-calendar3"></i>
                             ${dueDate}
                         </span>
-                        ${assignedUser}
+                        ${assignees}
                     </div>
                 `;
                 card.addEventListener('dragstart', event => {
+                    event.stopPropagation();
                     card.classList.add('dragging');
                     event.dataTransfer.setData('text/plain', task.id);
                     event.dataTransfer.effectAllowed = 'move';
@@ -863,6 +1005,22 @@ else
             });
 
             columnElement.dataset.columnId = column.id;
+            columnElement.addEventListener('dragstart', event => {
+                if (event.target.closest('.kb-card, button, input, .dropdown')) {
+                    event.preventDefault();
+                    return;
+                }
+
+                columnElement.classList.add('column-dragging');
+                event.dataTransfer.setData('application/x-kb-column', column.id);
+                event.dataTransfer.effectAllowed = 'move';
+            });
+
+            columnElement.addEventListener('dragend', () => {
+                columnElement.classList.remove('column-dragging');
+                clearColumnDragState();
+            });
+
             columnElement.addEventListener('dragover', event => {
                 event.preventDefault();
                 setActiveDropColumn(columnElement);
@@ -880,6 +1038,15 @@ else
             columnElement.addEventListener('drop', async event => {
                 event.preventDefault();
                 setActiveDropColumn(null);
+                const draggedColumnId = event.dataTransfer.getData('application/x-kb-column');
+                if (draggedColumnId) {
+                    if (String(draggedColumnId) !== String(column.id)) {
+                        const placeAfter = event.clientX > columnElement.getBoundingClientRect().left + (columnElement.offsetWidth / 2);
+                        await moveColumn(draggedColumnId, column.id, placeAfter);
+                    }
+                    return;
+                }
+
                 const taskId = event.dataTransfer.getData('text/plain');
                 if (!taskId) {
                     return;
@@ -895,8 +1062,53 @@ else
 
             boardContainer.appendChild(columnElement);
         });
+
+        const addColumnElement = document.createElement('div');
+        addColumnElement.className = 'kb-add-column rounded-3';
+        addColumnElement.innerHTML = `
+            <label class="form-label small fw-semibold" for="new-column-name">New Column</label>
+            <div class="input-group input-group-sm">
+                <input id="new-column-name" class="form-control" type="text" maxlength="100" placeholder="Column Name" aria-label="New Column Name">
+                <button class="btn btn-action" type="button" id="add-column-button"><i class="bi bi-plus-lg me-1"></i>Add</button>
+            </div>`;
+        const newColumnNameInput = addColumnElement.querySelector('#new-column-name');
+        const addColumnButton = addColumnElement.querySelector('#add-column-button');
+        addColumnButton.addEventListener('click', () => addProjectColumn(newColumnNameInput, addColumnButton));
+        newColumnNameInput.addEventListener('keydown', event => {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                addProjectColumn(newColumnNameInput, addColumnButton);
+            }
+        });
+        boardContainer.appendChild(addColumnElement);
         attachTaskActionHandlers();
         attachColumnActionHandlers();
+    }
+
+    async function addProjectColumn(input, button) {
+        const name = input?.value.trim();
+        if (!name || !projectData) {
+            input?.focus();
+            return;
+        }
+
+        button.disabled = true;
+        try {
+            const response = await fetch(`/api/projects/${projectData.id}/columns`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name })
+            });
+            if (!response.ok) throw new Error('Unable to add column');
+
+            const column = await response.json();
+            projectData.columns = [...(projectData.columns || []), column];
+            updateTaskBoard();
+        } catch (error) {
+            console.error(error);
+            alert('Could not add the column. Please try again.');
+            button.disabled = false;
+        }
     }
 
     async function moveTaskToColumn(taskId, columnId) {
@@ -918,6 +1130,33 @@ else
         }
 
         await loadProjectData();
+    }
+
+    async function moveColumn(draggedColumnId, targetColumnId, placeAfter) {
+        const columns = projectData?.columns || [];
+        const sourceIndex = columns.findIndex(column => String(column.id) === String(draggedColumnId));
+        const targetIndex = columns.findIndex(column => String(column.id) === String(targetColumnId));
+        if (sourceIndex < 0 || targetIndex < 0) return;
+
+        const reorderedColumns = [...columns];
+        const [draggedColumn] = reorderedColumns.splice(sourceIndex, 1);
+        let insertionIndex = reorderedColumns.findIndex(column => String(column.id) === String(targetColumnId));
+        if (placeAfter) insertionIndex += 1;
+        reorderedColumns.splice(insertionIndex, 0, draggedColumn);
+
+        const response = await fetch(`/api/projects/${projectData.id}/columns/order`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ columnIds: reorderedColumns.map(column => column.id) })
+        });
+        if (!response.ok) {
+            console.error('Unable to reorder columns', response.statusText);
+            alert('Could not reorder the columns. Please try again.');
+            return;
+        }
+
+        projectData.columns = reorderedColumns.map((column, position) => ({ ...column, position }));
+        updateTaskBoard();
     }
 
     function showDeleteTaskModal(taskId, taskTitle) {
@@ -994,27 +1233,49 @@ else
         const inputEl = header.querySelector('.kb-title-input');
         if (!inputEl) return;
 
-        // enable and focus input for inline editing
+        const originalName = inputEl.value;
         inputEl.disabled = false;
         inputEl.focus();
-        // move cursor to end
         const val = inputEl.value || '';
         inputEl.setSelectionRange(val.length, val.length);
 
-        // handle save on blur or Enter
-        const finish = (save) => {
+        let isSaving = false;
+        const finish = async (save) => {
+            if (isSaving) return;
             inputEl.removeEventListener('blur', onBlur);
             inputEl.removeEventListener('keydown', onKeyDown);
             inputEl.disabled = true;
             if (!save) return;
             const newName = (inputEl.value || '').trim();
-            if (!newName) return;
-            if (projectData && projectData.columns) {
-                const col = projectData.columns.find(c => String(c.id) === String(columnId));
-                if (col) col.name = newName;
+            if (!newName) {
+                inputEl.value = originalName;
+                return;
             }
-            header.querySelectorAll('.column-action-edit, .column-action-remove').forEach(b => b.dataset.columnName = newName);
-            updateTaskBoard();
+            if (newName === originalName) return;
+            if (!projectData?.id) return;
+
+            isSaving = true;
+            try {
+                const response = await fetch(`/api/projects/${projectData.id}/columns/${columnId}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name: newName })
+                });
+                if (!response.ok) {
+                    throw new Error(await response.text());
+                }
+
+                const updatedColumn = await response.json();
+                const column = projectData.columns?.find(c => String(c.id) === String(columnId));
+                if (column) column.name = updatedColumn.name;
+                updateTaskBoard();
+            } catch (error) {
+                console.error(error);
+                inputEl.value = originalName;
+                alert(error.message || 'Unable to update the column name.');
+            } finally {
+                isSaving = false;
+            }
         };
 
         const onBlur = () => finish(true);
@@ -1024,8 +1285,7 @@ else
                 finish(true);
             } else if (e.key === 'Escape') {
                 e.preventDefault();
-                // revert value
-                inputEl.value = btn.dataset.columnName || inputEl.value;
+                inputEl.value = originalName;
                 finish(false);
             }
         };
@@ -1306,8 +1566,10 @@ else
     }
 
     const selectedCollaborators = new Map();
+    let inviteSearchRequestId = 0;
 
     async function searchUsers(query) {
+        const requestId = ++inviteSearchRequestId;
         inviteUserResults.innerHTML = '';
         inviteUserResults.hidden = false;
 
@@ -1320,13 +1582,16 @@ else
             return;
         }
 
-        const response = await fetch(`/api/users/search?q=${encodeURIComponent(query)}`);
-        if (!response.ok) {
-            console.error('Failed to search users');
+        let users;
+        try {
+            const response = await fetch(`/api/users/search?q=${encodeURIComponent(query)}`);
+            if (!response.ok) throw new Error('Failed to search users');
+            users = await response.json();
+        } catch (error) {
+            if (requestId === inviteSearchRequestId) console.error(error);
             return;
         }
-
-        const users = await response.json();
+        if (requestId !== inviteSearchRequestId) return;
         let resultsFound = false;
         let allExcluded = true;
 
@@ -1400,21 +1665,78 @@ else
         }
 
         collaborators.forEach(collaborator => {
+            const fullName = collaborator.fullName || collaborator.email || 'Collaborator';
             const item = document.createElement('div');
             item.className = 'list-group-item d-flex align-items-center gap-3';
 
             const avatar = document.createElement('div');
             avatar.className = 'kb-avatar d-flex align-items-center justify-content-center bg-secondary text-white';
-            avatar.textContent = collaborator.fullName.split(' ').map(part => part[0]).join('').slice(0, 2).toUpperCase();
+            avatar.textContent = getInitials(fullName);
 
             const details = document.createElement('div');
             details.className = 'flex-grow-1';
-            details.innerHTML = `<div class="fw-semibold">${collaborator.fullName}</div><div class="text-muted small">${collaborator.email}</div>`;
+            const name = document.createElement('div');
+            name.className = 'fw-semibold';
+            name.textContent = fullName;
+            const email = document.createElement('div');
+            email.className = 'text-muted small';
+            email.textContent = collaborator.email || '';
+            details.append(name, email);
 
             item.appendChild(avatar);
             item.appendChild(details);
+            const isOwner = String(collaborator.userId) === String(projectData.userId)
+                || String(collaborator.role || '').toLowerCase() === 'owner';
+            if (isOwner) {
+                const ownerLabel = document.createElement('span');
+                ownerLabel.className = 'text-muted small ms-auto';
+                ownerLabel.textContent = 'Owner';
+                item.appendChild(ownerLabel);
+            } else {
+                const removeButton = document.createElement('button');
+                removeButton.type = 'button';
+                removeButton.className = 'btn-close ms-auto';
+                removeButton.title = `Remove ${fullName}`;
+                removeButton.setAttribute('aria-label', `Remove ${fullName}`);
+                removeButton.addEventListener('click', () => removeCollaborator(collaborator, removeButton));
+                item.appendChild(removeButton);
+            }
             existingCollaboratorsList.appendChild(item);
         });
+    }
+
+    async function removeCollaborator(collaborator, button) {
+        if (!projectData || !collaborator?.userId) return;
+
+        const fullName = collaborator.fullName || collaborator.email || 'this collaborator';
+        const confirmed = await window.showConfirm({
+            title: 'Remove collaborator',
+            message: `Remove ${fullName} from this project?`,
+            confirmText: 'Remove'
+        });
+        if (!confirmed) return;
+
+        button.disabled = true;
+        try {
+            const response = await fetch(`/api/projects/${projectData.id}/collaborators/${encodeURIComponent(collaborator.userId)}`, {
+                method: 'DELETE'
+            });
+            if (!response.ok) {
+                throw new Error((await response.text()) || 'Unable to remove collaborator.');
+            }
+
+            projectData.collaborators = (projectData.collaborators || [])
+                .filter(item => String(item.userId) !== String(collaborator.userId));
+            existingCollaboratorIds.delete(String(collaborator.userId).toLowerCase());
+            button.closest('.list-group-item')?.remove();
+
+            // Refresh task assignments in the background after the immediate UI update.
+            loadProjectData();
+        } catch (error) {
+            console.error(error);
+            alert(error.message || 'Could not remove this collaborator.');
+            button.disabled = false;
+        }
     }
 
     function isExistingProjectCollaborator(userId) {
@@ -1462,47 +1784,52 @@ else
     }
 
     async function confirmInvite() {
-        if (!projectData || !selectedCollaborators.size) {
+        if (!projectData || !selectedCollaborators.size || confirmInviteButton.disabled) {
             return;
         }
 
-        const selectedUsers = Array.from(selectedCollaborators.values());
-        const results = await Promise.all(selectedUsers.map(user =>
-            $.ajax({
-                url: `/api/projects/${projectData.id}/collaborators`,
-                method: 'POST',
-                contentType: 'application/json',
-                data: JSON.stringify({ userId: user.id, role: 'member' })
-            }).then(() => ({ user, success: true }))
-              .catch((jqXHR, textStatus, errorThrown) => ({
-                  user,
-                  success: false,
-                  error: jqXHR?.responseText || errorThrown || textStatus || 'Unknown error'
-              }))
-        ));
+        confirmInviteButton.disabled = true;
+        try {
+            const selectedUsers = Array.from(selectedCollaborators.values());
+            const results = await Promise.all(selectedUsers.map(user =>
+                $.ajax({
+                    url: `/api/projects/${projectData.id}/collaborators`,
+                    method: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify({ userId: user.id, role: 'member' })
+                }).then(() => ({ user, success: true }))
+                  .catch((jqXHR, textStatus, errorThrown) => ({
+                      user,
+                      success: false,
+                      error: jqXHR?.responseText || errorThrown || textStatus || 'Unknown error'
+                  }))
+            ));
 
-        const failed = results.filter(result => !result.success);
-        const successful = results.filter(result => result.success);
+            const failed = results.filter(result => !result.success);
+            const successful = results.filter(result => result.success);
 
-        const inviteConfirmInstance = bootstrap.Modal.getInstance(inviteConfirmModal);
-        inviteConfirmInstance?.hide();
+            const inviteConfirmInstance = bootstrap.Modal.getInstance(inviteConfirmModal);
+            inviteConfirmInstance?.hide();
 
-        if (successful.length) {
-            successful.forEach(result => selectedCollaborators.delete(result.user.id));
-            renderSelectedCollaborators();
+            if (successful.length) {
+                successful.forEach(result => selectedCollaborators.delete(result.user.id));
+                renderSelectedCollaborators();
+            }
+
+            if (failed.length) {
+                const errorMessages = failed.map(result => `${result.user.name}: ${result.error}`);
+                alert(`Some collaborators could not be invited.\n${errorMessages.join('\n')}`);
+                return;
+            }
+
+            const inviteModalInstance = bootstrap.Modal.getInstance(inviteCollaboratorModal);
+            inviteModalInstance?.hide();
+            selectedCollaborators.clear();
+
+            await loadProjectData();
+        } finally {
+            confirmInviteButton.disabled = false;
         }
-
-        if (failed.length) {
-            const errorMessages = failed.map(result => `${result.user.name}: ${result.error}`);
-            alert(`Some collaborators could not be invited.\n${errorMessages.join('\n')}`);
-            return;
-        }
-
-        const inviteModalInstance = bootstrap.Modal.getInstance(inviteCollaboratorModal);
-        inviteModalInstance?.hide();
-        selectedCollaborators.clear();
-
-        await loadProjectData();
     }
 
     function showDeleteModal() {
@@ -1516,7 +1843,7 @@ else
 
     if (taskSearchInput) {
         taskSearchInput.addEventListener('input', event => {
-            searchTerm = event.target.value;
+            searchTerm = event.target.value.trim().toLocaleLowerCase();
             updateTaskBoard();
         });
     }
@@ -1574,6 +1901,17 @@ else
     if (inviteUserSearch) {
         inviteUserSearch.addEventListener('input', event => {
             searchUsers(event.target.value);
+        });
+        inviteUserSearch.addEventListener('blur', () => {
+            window.setTimeout(() => {
+                if (inviteUserResults.contains(document.activeElement)) {
+                    return;
+                }
+
+                inviteSearchRequestId += 1;
+                inviteUserResults.innerHTML = '';
+                inviteUserResults.hidden = true;
+            }, 0);
         });
     }
 

@@ -1,12 +1,16 @@
 using CMS.Data;
 using CMS.Models;
 using Dapper;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
 
 namespace CMS.Controllers;
 
 [ApiController]
 [Route("api/projects")]
+[Authorize]
 public class ProjectApiController : ControllerBase
 {
     private readonly DapperContext _context;
@@ -21,7 +25,7 @@ public class ProjectApiController : ControllerBase
     {
         await using var connection = await _context.CreateOpenConnectionAsync();
 
-        const string sql = "SELECT id, name, description, created_at, updated_at FROM project";
+        const string sql = "SELECT id, user_id AS UserId, name, description, created_at, updated_at FROM project";
 
         var projects = (await connection.QueryAsync<Project>(sql)).ToList();
         return Ok(projects.Select(MapProject).ToList());
@@ -32,7 +36,7 @@ public class ProjectApiController : ControllerBase
     {
         await using var connection = await _context.CreateOpenConnectionAsync();
 
-        const string projectSql = "SELECT id, name, description, created_at, updated_at FROM project WHERE id = @Id";
+        const string projectSql = "SELECT id, user_id AS UserId, name, description, created_at, updated_at FROM project WHERE id = @Id";
 
         var project = await connection.QuerySingleOrDefaultAsync<Project>(projectSql, new { Id = id });
         if (project == null)
@@ -48,7 +52,7 @@ public class ProjectApiController : ControllerBase
 
         project.Tags = (await connection.QueryAsync<ProjectTag>(tagsSql, new { ProjectId = id })).ToList();
 
-        const string collaboratorsSql = "SELECT pc.project_id, pc.user_id, pc.role, pc.joined_at, u.id, u.full_name, u.email, u.created_at FROM project_collaborator pc LEFT JOIN users u ON u.id = pc.user_id WHERE pc.project_id = @ProjectId";
+        const string collaboratorsSql = "SELECT pc.project_id AS ProjectId, pc.user_id AS UserId, pc.role AS Role, pc.joined_at AS JoinedAt, u.id AS Id, u.full_name AS FullName, u.email AS Email, u.created_at AS CreatedAt FROM project_collaborator pc LEFT JOIN users u ON u.id = pc.user_id WHERE pc.project_id = @ProjectId";
 
         project.Collaborators = (await connection.QueryAsync<ProjectCollaborator, User, ProjectCollaborator>(
             collaboratorsSql,
@@ -71,6 +75,39 @@ public class ProjectApiController : ControllerBase
             },
             new { ProjectId = id },
             splitOn: "id")).ToList();
+
+        if (project.Tasks.Any())
+        {
+            var taskIds = project.Tasks.Select(task => task.Id).ToArray();
+            const string assigneesSql = @"
+                SELECT ta.task_id AS TaskId, ta.user_id AS UserId, ta.assigned_at AS AssignedAt,
+                       u.id AS Id, u.full_name AS FullName, u.email AS Email, u.created_at AS CreatedAt
+                FROM task_assignee ta
+                JOIN users u ON u.id = ta.user_id
+                WHERE ta.task_id = ANY(@TaskIds)
+                ORDER BY ta.assigned_at";
+
+            var assignees = await connection.QueryAsync<TaskAssignee, User, TaskAssignee>(
+                assigneesSql,
+                (assignee, user) =>
+                {
+                    assignee.User = user;
+                    return assignee;
+                },
+                new { TaskIds = taskIds },
+                splitOn: "Id");
+
+            var assigneesByTask = assignees
+                .GroupBy(assignee => assignee.TaskId)
+                .ToDictionary(group => group.Key, group => group.ToList());
+
+            foreach (var task in project.Tasks)
+            {
+                task.Assignees = assigneesByTask.TryGetValue(task.Id, out var taskAssignees)
+                    ? taskAssignees
+                    : [];
+            }
+        }
 
         if (project.Tasks.Any())
         {
@@ -143,14 +180,22 @@ public class ProjectApiController : ControllerBase
             return ValidationProblem(ModelState);
         }
 
+        var userIdValue = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
+            ?? User.FindFirst(JwtRegisteredClaimNames.Sub)?.Value;
+        if (!Guid.TryParse(userIdValue, out var ownerUserId))
+        {
+            return Unauthorized();
+        }
+
         project.Id = project.Id == Guid.Empty ? Guid.NewGuid() : project.Id;
+        project.UserId = ownerUserId;
         project.CreatedAt = DateTime.UtcNow;
         project.UpdatedAt = DateTime.UtcNow;
 
         await using var connection = await _context.CreateOpenConnectionAsync();
         await using var transaction = await connection.BeginTransactionAsync();
 
-        const string insertProjectSql = "INSERT INTO project (id, name, description, created_at, updated_at) VALUES (@Id, @Name, @Description, @CreatedAt, @UpdatedAt)";
+        const string insertProjectSql = "INSERT INTO project (id, user_id, name, description, created_at, updated_at) VALUES (@Id, @UserId, @Name, @Description, @CreatedAt, @UpdatedAt)";
 
         await connection.ExecuteAsync(insertProjectSql, project, transaction);
 
@@ -176,7 +221,18 @@ public class ProjectApiController : ControllerBase
 
         const string insertCollaboratorSql = "INSERT INTO project_collaborator (project_id, user_id, role, joined_at) VALUES (@ProjectId, @UserId, @Role, @JoinedAt)";
 
-        foreach (var collaborator in project.Collaborators)
+        var collaborators = project.Collaborators
+            .Where(collaborator => collaborator.UserId != ownerUserId)
+            .ToList();
+        collaborators.Insert(0, new ProjectCollaborator
+        {
+            ProjectId = project.Id,
+            UserId = ownerUserId,
+            Role = "owner",
+            JoinedAt = DateTime.UtcNow,
+        });
+
+        foreach (var collaborator in collaborators)
         {
             collaborator.ProjectId = project.Id;
             collaborator.JoinedAt = collaborator.JoinedAt == default ? DateTime.UtcNow : collaborator.JoinedAt;
@@ -469,6 +525,216 @@ public class ProjectApiController : ControllerBase
         });
     }
 
+    [HttpPost("{projectId:guid}/columns")]
+    public async Task<ActionResult<ProjectColumnApiResponse>> CreateColumn(Guid projectId, CreateProjectColumnRequest request)
+    {
+        var name = request.Name?.Trim();
+        if (string.IsNullOrWhiteSpace(name) || name.Length > 100)
+        {
+            return BadRequest("A column name of up to 100 characters is required.");
+        }
+
+        await using var connection = await _context.CreateOpenConnectionAsync();
+        const string projectExistsSql = "SELECT COUNT(1) FROM project WHERE id = @ProjectId";
+        var projectExists = await connection.ExecuteScalarAsync<int>(projectExistsSql, new { ProjectId = projectId }) > 0;
+        if (!projectExists)
+        {
+            return NotFound();
+        }
+
+        const string nextPositionSql = "SELECT COALESCE(MAX(position), -1) + 1 FROM project_column WHERE project_id = @ProjectId";
+        var position = await connection.ExecuteScalarAsync<int>(nextPositionSql, new { ProjectId = projectId });
+        var column = new ProjectColumn
+        {
+            Id = Guid.NewGuid(),
+            ProjectId = projectId,
+            Name = name,
+            Position = position,
+            CreatedAt = DateTime.UtcNow,
+        };
+
+        const string insertColumnSql = "INSERT INTO project_column (id, project_id, name, position, created_at) VALUES (@Id, @ProjectId, @Name, @Position, @CreatedAt)";
+        await connection.ExecuteAsync(insertColumnSql, column);
+
+        return Ok(new ProjectColumnApiResponse
+        {
+            Id = column.Id,
+            Name = column.Name,
+            Position = column.Position,
+        });
+    }
+
+    [HttpPut("{projectId:guid}/columns/{columnId:guid}")]
+    public async Task<ActionResult<ProjectColumnApiResponse>> UpdateColumn(
+        Guid projectId,
+        Guid columnId,
+        UpdateProjectColumnRequest request)
+    {
+        var name = request.Name?.Trim();
+        if (string.IsNullOrWhiteSpace(name) || name.Length > 100)
+        {
+            return BadRequest("A column name of up to 100 characters is required.");
+        }
+
+        await using var connection = await _context.CreateOpenConnectionAsync();
+        const string updateSql = @"
+            UPDATE project_column
+            SET name = @Name
+            WHERE id = @ColumnId AND project_id = @ProjectId
+            RETURNING id AS Id, name AS Name, position AS Position";
+
+        var column = await connection.QuerySingleOrDefaultAsync<ProjectColumnApiResponse>(updateSql, new
+        {
+            Name = name,
+            ColumnId = columnId,
+            ProjectId = projectId,
+        });
+
+        return column == null ? NotFound() : Ok(column);
+    }
+
+    [HttpPut("{projectId:guid}/columns/order")]
+    public async Task<IActionResult> ReorderColumns(Guid projectId, ReorderProjectColumnsRequest request)
+    {
+        if (request.ColumnIds.Count == 0 || request.ColumnIds.Distinct().Count() != request.ColumnIds.Count)
+        {
+            return BadRequest("A unique ordered list of columns is required.");
+        }
+
+        await using var connection = await _context.CreateOpenConnectionAsync();
+        var currentColumnIds = (await connection.QueryAsync<Guid>(
+            "SELECT id FROM project_column WHERE project_id = @ProjectId",
+            new { ProjectId = projectId })).ToList();
+        if (currentColumnIds.Count == 0 && request.ColumnIds.Count == 0)
+        {
+            return NoContent();
+        }
+        if (currentColumnIds.Count != request.ColumnIds.Count || !currentColumnIds.All(request.ColumnIds.Contains))
+        {
+            return BadRequest("The column order must include every column in the project exactly once.");
+        }
+
+        await using var transaction = await connection.BeginTransactionAsync();
+        const string updatePositionSql = "UPDATE project_column SET position = @Position WHERE id = @ColumnId AND project_id = @ProjectId";
+        for (var position = 0; position < request.ColumnIds.Count; position++)
+        {
+            await connection.ExecuteAsync(updatePositionSql, new
+            {
+                ColumnId = request.ColumnIds[position],
+                ProjectId = projectId,
+                Position = position,
+            }, transaction);
+        }
+        await transaction.CommitAsync();
+        return NoContent();
+    }
+
+    [HttpPost("{projectId:guid}/tasks/{taskId:guid}/assignees/{userId:guid}")]
+    public async Task<ActionResult<TaskAssigneeApiResponse>> AddTaskAssignee(
+        Guid projectId,
+        Guid taskId,
+        Guid userId)
+    {
+        await using var connection = await _context.CreateOpenConnectionAsync();
+
+        const string taskExistsSql = "SELECT COUNT(1) FROM task_item WHERE id = @TaskId AND project_id = @ProjectId";
+        var taskExists = await connection.ExecuteScalarAsync<int>(taskExistsSql, new { TaskId = taskId, ProjectId = projectId }) > 0;
+        if (!taskExists)
+        {
+            return NotFound();
+        }
+
+        const string collaboratorSql = @"
+            SELECT u.id AS UserId, u.full_name AS FullName, u.email AS Email
+            FROM project_collaborator pc
+            JOIN users u ON u.id = pc.user_id
+            WHERE pc.project_id = @ProjectId AND pc.user_id = @UserId";
+
+        var collaborator = await connection.QuerySingleOrDefaultAsync<TaskAssigneeApiResponse>(collaboratorSql, new
+        {
+            ProjectId = projectId,
+            UserId = userId,
+        });
+
+        if (collaborator == null)
+        {
+            return BadRequest("Only project collaborators can be assigned to this task.");
+        }
+
+        const string insertSql = @"
+            INSERT INTO task_assignee (task_id, user_id, assigned_at)
+            VALUES (@TaskId, @UserId, @AssignedAt)
+            ON CONFLICT (task_id, user_id) DO NOTHING";
+
+        await connection.ExecuteAsync(insertSql, new
+        {
+            TaskId = taskId,
+            UserId = userId,
+            AssignedAt = DateTime.UtcNow,
+        });
+
+        const string setPrimaryAssigneeSql = @"
+            UPDATE task_item
+            SET assigned_user_id = COALESCE(assigned_user_id, @UserId), updated_at = @UpdatedAt
+            WHERE id = @TaskId AND project_id = @ProjectId";
+
+        await connection.ExecuteAsync(setPrimaryAssigneeSql, new
+        {
+            TaskId = taskId,
+            ProjectId = projectId,
+            UserId = userId,
+            UpdatedAt = DateTime.UtcNow,
+        });
+
+        return Ok(collaborator);
+    }
+
+    [HttpDelete("{projectId:guid}/tasks/{taskId:guid}/assignees/{userId:guid}")]
+    public async Task<IActionResult> RemoveTaskAssignee(Guid projectId, Guid taskId, Guid userId)
+    {
+        await using var connection = await _context.CreateOpenConnectionAsync();
+        await using var transaction = await connection.BeginTransactionAsync();
+
+        const string taskExistsSql = "SELECT COUNT(1) FROM task_item WHERE id = @TaskId AND project_id = @ProjectId";
+        var taskExists = await connection.ExecuteScalarAsync<int>(taskExistsSql, new { TaskId = taskId, ProjectId = projectId }, transaction) > 0;
+        if (!taskExists)
+        {
+            return NotFound();
+        }
+
+        const string ownerSql = "SELECT user_id FROM project WHERE id = @ProjectId";
+        var ownerUserId = await connection.ExecuteScalarAsync<Guid?>(ownerSql, new { ProjectId = projectId }, transaction);
+        if (ownerUserId == userId)
+        {
+            return BadRequest("The project owner cannot be removed from a task.");
+        }
+
+        const string deleteSql = "DELETE FROM task_assignee WHERE task_id = @TaskId AND user_id = @UserId";
+        var deleted = await connection.ExecuteAsync(deleteSql, new { TaskId = taskId, UserId = userId }, transaction);
+        if (deleted == 0)
+        {
+            return NotFound();
+        }
+
+        const string updatePrimaryAssigneeSql = @"
+            UPDATE task_item
+            SET assigned_user_id = (
+                    SELECT user_id FROM task_assignee WHERE task_id = @TaskId ORDER BY assigned_at LIMIT 1
+                ),
+                updated_at = @UpdatedAt
+            WHERE id = @TaskId AND project_id = @ProjectId";
+
+        await connection.ExecuteAsync(updatePrimaryAssigneeSql, new
+        {
+            TaskId = taskId,
+            ProjectId = projectId,
+            UpdatedAt = DateTime.UtcNow,
+        }, transaction);
+
+        await transaction.CommitAsync();
+        return NoContent();
+    }
+
     [HttpPut("{projectId:guid}/tasks/{taskId:guid}/checklist/{itemId:guid}")]
     public async Task<ActionResult<TaskChecklistItemApiResponse>> UpdateChecklistItem(
         Guid projectId,
@@ -621,13 +887,24 @@ public class ProjectApiController : ControllerBase
     [HttpPost("{id:guid}/collaborators")]
     public async Task<IActionResult> AddCollaborator(Guid id, AddProjectCollaboratorRequest request)
     {
+        var userIdValue = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
+            ?? User.FindFirst(JwtRegisteredClaimNames.Sub)?.Value;
+        if (!Guid.TryParse(userIdValue, out var currentUserId))
+        {
+            return Unauthorized();
+        }
+
         await using var connection = await _context.CreateOpenConnectionAsync();
 
-        const string projectExistsSql = "SELECT COUNT(1) > 0 FROM project WHERE id = @Id";
-        var projectExists = await connection.ExecuteScalarAsync<bool>(projectExistsSql, new { Id = id });
-        if (!projectExists)
+        const string ownerSql = "SELECT user_id FROM project WHERE id = @Id";
+        var ownerUserId = await connection.QuerySingleOrDefaultAsync<Guid?>(ownerSql, new { Id = id });
+        if (!ownerUserId.HasValue)
         {
             return NotFound();
+        }
+        if (ownerUserId.Value != currentUserId)
+        {
+            return Forbid();
         }
 
         const string userExistsSql = "SELECT COUNT(1) > 0 FROM users WHERE id = @UserId";
@@ -654,6 +931,71 @@ public class ProjectApiController : ControllerBase
         return NoContent();
     }
 
+    [HttpDelete("{id:guid}/collaborators/{userId:guid}")]
+    public async Task<IActionResult> RemoveCollaborator(Guid id, Guid userId)
+    {
+        var userIdValue = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
+            ?? User.FindFirst(JwtRegisteredClaimNames.Sub)?.Value;
+        if (!Guid.TryParse(userIdValue, out var currentUserId))
+        {
+            return Unauthorized();
+        }
+
+        await using var connection = await _context.CreateOpenConnectionAsync();
+        const string ownerSql = "SELECT user_id FROM project WHERE id = @Id";
+        var ownerUserId = await connection.QuerySingleOrDefaultAsync<Guid?>(ownerSql, new { Id = id });
+        if (!ownerUserId.HasValue)
+        {
+            return NotFound();
+        }
+        if (ownerUserId.Value != currentUserId)
+        {
+            return Forbid();
+        }
+        if (ownerUserId.Value == userId)
+        {
+            return BadRequest("The project owner cannot be removed as a collaborator.");
+        }
+
+        await using var transaction = await connection.BeginTransactionAsync();
+        const string deleteCollaboratorSql = "DELETE FROM project_collaborator WHERE project_id = @ProjectId AND user_id = @UserId";
+        var deleted = await connection.ExecuteAsync(deleteCollaboratorSql, new { ProjectId = id, UserId = userId }, transaction);
+        if (deleted == 0)
+        {
+            return NotFound();
+        }
+
+        const string removeTaskAssigneeSql = @"
+            DELETE FROM task_assignee ta
+            USING task_item ti
+            WHERE ta.task_id = ti.id
+              AND ti.project_id = @ProjectId
+              AND ta.user_id = @UserId";
+        await connection.ExecuteAsync(removeTaskAssigneeSql, new { ProjectId = id, UserId = userId }, transaction);
+
+        const string updatePrimaryAssigneeSql = @"
+            UPDATE task_item ti
+            SET assigned_user_id = (
+                    SELECT ta.user_id
+                    FROM task_assignee ta
+                    WHERE ta.task_id = ti.id
+                    ORDER BY ta.assigned_at
+                    LIMIT 1
+                ),
+                updated_at = @UpdatedAt
+            WHERE ti.project_id = @ProjectId
+              AND ti.assigned_user_id = @UserId";
+        await connection.ExecuteAsync(updatePrimaryAssigneeSql, new
+        {
+            ProjectId = id,
+            UserId = userId,
+            UpdatedAt = DateTime.UtcNow,
+        }, transaction);
+
+        await transaction.CommitAsync();
+        return NoContent();
+    }
+
     private static string? ResolveCategoryName(string? category, IReadOnlyList<ProjectTag> tags)
     {
         if (string.IsNullOrWhiteSpace(category))
@@ -674,6 +1016,7 @@ public class ProjectApiController : ControllerBase
         return new ProjectApiResponse
         {
             Id = project.Id,
+            UserId = project.UserId,
             Name = project.Name,
             Description = project.Description,
             CreatedAt = project.CreatedAt,
@@ -712,6 +1055,14 @@ public class ProjectApiController : ControllerBase
                     Description = task.Description,
                     ColumnId = task.ColumnId,
                     AssignedUserName = task.AssignedUser?.FullName,
+                    Assignees = task.Assignees
+                        .Select(assignee => new TaskAssigneeApiResponse
+                        {
+                            UserId = assignee.UserId,
+                            FullName = assignee.User?.FullName ?? string.Empty,
+                            Email = assignee.User?.Email ?? string.Empty,
+                        })
+                        .ToList(),
                     DueDate = task.DueDate,
                     Priority = task.Priority,
                     Tags = task.Tags
@@ -731,6 +1082,7 @@ public class ProjectApiController : ControllerBase
 public class ProjectApiResponse
 {
     public Guid Id { get; set; }
+    public Guid UserId { get; set; }
     public string Name { get; set; } = string.Empty;
     public string? Description { get; set; }
     public DateTime CreatedAt { get; set; }
@@ -746,6 +1098,21 @@ public class ProjectColumnApiResponse
     public Guid Id { get; set; }
     public string Name { get; set; } = string.Empty;
     public int Position { get; set; }
+}
+
+public sealed class CreateProjectColumnRequest
+{
+    public string? Name { get; set; }
+}
+
+public sealed class UpdateProjectColumnRequest
+{
+    public string? Name { get; set; }
+}
+
+public sealed class ReorderProjectColumnsRequest
+{
+    public List<Guid> ColumnIds { get; set; } = [];
 }
 
 public class MoveTaskRequest
@@ -788,13 +1155,13 @@ public class TaskItemApiResponse
     public string? Description { get; set; }
     public Guid ColumnId { get; set; }
     public string? AssignedUserName { get; set; }
+    public List<TaskAssigneeApiResponse> Assignees { get; set; } = [];
     public DateTime? DueDate { get; set; }
     public string Priority { get; set; } = string.Empty;
     public List<ProjectTagApiResponse> Tags { get; set; } = [];
 }
 
 public sealed record AddProjectCollaboratorRequest(Guid UserId, string Role = "member");
-
 public sealed class TaskTagRow
 {
     public Guid TaskId { get; init; }

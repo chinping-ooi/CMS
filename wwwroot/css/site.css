@@ -430,6 +430,22 @@ body.sidebar-collapsed .sidebar .nav-link {
   min-height: 70vh;
 }
 
+.kb-owner-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  width: 2.5rem;
+  height: 2.5rem;
+  border: 2px solid #fff;
+  border-radius: 50%;
+  background: #e8f0ff;
+  color: #1c56d3;
+  font-size: 0.7rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
 .task-column {
   min-height: 60vh;
   padding: 1rem 0 0;

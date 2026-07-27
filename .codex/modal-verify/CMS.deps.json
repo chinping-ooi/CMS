@@ -1,0 +1,202 @@
+{
+  "runtimeTarget": {
+    "name": ".NETCoreApp,Version=v10.0",
+    "signature": ""
+  },
+  "compilationOptions": {},
+  "targets": {
+    ".NETCoreApp,Version=v10.0": {
+      "CMS/1.0.0": {
+        "dependencies": {
+          "Dapper": "2.1.79",
+          "Microsoft.AspNetCore.Authentication.JwtBearer": "10.0.3",
+          "Npgsql": "10.0.3",
+          "System.IdentityModel.Tokens.Jwt": "8.6.1"
+        },
+        "runtime": {
+          "CMS.dll": {}
+        }
+      },
+      "Dapper/2.1.79": {
+        "runtime": {
+          "lib/net10.0/Dapper.dll": {
+            "assemblyVersion": "2.0.0.0",
+            "fileVersion": "2.1.79.29349"
+          }
+        }
+      },
+      "Microsoft.AspNetCore.Authentication.JwtBearer/10.0.3": {
+        "dependencies": {
+          "Microsoft.IdentityModel.Protocols.OpenIdConnect": "8.0.1"
+        },
+        "runtime": {
+          "lib/net10.0/Microsoft.AspNetCore.Authentication.JwtBearer.dll": {
+            "assemblyVersion": "10.0.3.0",
+            "fileVersion": "10.0.326.7603"
+          }
+        }
+      },
+      "Microsoft.IdentityModel.Abstractions/8.6.1": {
+        "runtime": {
+          "lib/net9.0/Microsoft.IdentityModel.Abstractions.dll": {
+            "assemblyVersion": "8.6.1.0",
+            "fileVersion": "8.6.1.60307"
+          }
+        }
+      },
+      "Microsoft.IdentityModel.JsonWebTokens/8.6.1": {
+        "dependencies": {
+          "Microsoft.IdentityModel.Tokens": "8.6.1"
+        },
+        "runtime": {
+          "lib/net9.0/Microsoft.IdentityModel.JsonWebTokens.dll": {
+            "assemblyVersion": "8.6.1.0",
+            "fileVersion": "8.6.1.60307"
+          }
+        }
+      },
+      "Microsoft.IdentityModel.Logging/8.6.1": {
+        "dependencies": {
+          "Microsoft.IdentityModel.Abstractions": "8.6.1"
+        },
+        "runtime": {
+          "lib/net9.0/Microsoft.IdentityModel.Logging.dll": {
+            "assemblyVersion": "8.6.1.0",
+            "fileVersion": "8.6.1.60307"
+          }
+        }
+      },
+      "Microsoft.IdentityModel.Protocols/8.0.1": {
+        "dependencies": {
+          "Microsoft.IdentityModel.Tokens": "8.6.1"
+        },
+        "runtime": {
+          "lib/net9.0/Microsoft.IdentityModel.Protocols.dll": {
+            "assemblyVersion": "8.0.1.0",
+            "fileVersion": "8.0.1.50722"
+          }
+        }
+      },
+      "Microsoft.IdentityModel.Protocols.OpenIdConnect/8.0.1": {
+        "dependencies": {
+          "Microsoft.IdentityModel.Protocols": "8.0.1",
+          "System.IdentityModel.Tokens.Jwt": "8.6.1"
+        },
+        "runtime": {
+          "lib/net9.0/Microsoft.IdentityModel.Protocols.OpenIdConnect.dll": {
+            "assemblyVersion": "8.0.1.0",
+            "fileVersion": "8.0.1.50722"
+          }
+        }
+      },
+      "Microsoft.IdentityModel.Tokens/8.6.1": {
+        "dependencies": {
+          "Microsoft.IdentityModel.Logging": "8.6.1"
+        },
+        "runtime": {
+          "lib/net9.0/Microsoft.IdentityModel.Tokens.dll": {
+            "assemblyVersion": "8.6.1.0",
+            "fileVersion": "8.6.1.60307"
+          }
+        }
+      },
+      "Npgsql/10.0.3": {
+        "runtime": {
+          "lib/net10.0/Npgsql.dll": {
+            "assemblyVersion": "10.0.3.0",
+            "fileVersion": "10.0.3.0"
+          }
+        }
+      },
+      "System.IdentityModel.Tokens.Jwt/8.6.1": {
+        "dependencies": {
+          "Microsoft.IdentityModel.JsonWebTokens": "8.6.1",
+          "Microsoft.IdentityModel.Tokens": "8.6.1"
+        },
+        "runtime": {
+          "lib/net9.0/System.IdentityModel.Tokens.Jwt.dll": {
+            "assemblyVersion": "8.6.1.0",
+            "fileVersion": "8.6.1.60307"
+          }
+        }
+      }
+    }
+  },
+  "libraries": {
+    "CMS/1.0.0": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
+    },
+    "Dapper/2.1.79": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-8YijbzgTfmqmQOnVNorYM6K++pxqnW3nJ4aC1sRHzxUA2CcuoJ9gsTem3kgBnPRMc38zZHl4Esb6hAezXIEEuw==",
+      "path": "dapper/2.1.79",
+      "hashPath": "dapper.2.1.79.nupkg.sha512"
+    },
+    "Microsoft.AspNetCore.Authentication.JwtBearer/10.0.3": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-TBDs8e9y2vJHp14EwNfnIZUNrm6siw8PAAU5laOrYFuGgRxx8oCdxZyfTgp1Oy/icUk9h/XtpYBHPnXIG0f2/g==",
+      "path": "microsoft.aspnetcore.authentication.jwtbearer/10.0.3",
+      "hashPath": "microsoft.aspnetcore.authentication.jwtbearer.10.0.3.nupkg.sha512"
+    },
+    "Microsoft.IdentityModel.Abstractions/8.6.1": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-OwmvCXYTttrxV3qT7QKDkoQP4/DB4RWjTwEqV+dNfb2opHn29WGDzoF+r4BVFQVy+BDYMhRlhIp8g3jSyJd+4Q==",
+      "path": "microsoft.identitymodel.abstractions/8.6.1",
+      "hashPath": "microsoft.identitymodel.abstractions.8.6.1.nupkg.sha512"
+    },
+    "Microsoft.IdentityModel.JsonWebTokens/8.6.1": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-CAu9DWsPZVtnyE3bOJ83rlPWpahY37sP/0bIOdRlxS90W88zSI4V3FyoCDlXxV8+gloT+a247pwPXfSNjYyAxw==",
+      "path": "microsoft.identitymodel.jsonwebtokens/8.6.1",
+      "hashPath": "microsoft.identitymodel.jsonwebtokens.8.6.1.nupkg.sha512"
+    },
+    "Microsoft.IdentityModel.Logging/8.6.1": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-BdWlVgJYdmcR9TMUOhaZ3vJyaRO7zr7xgK+cRT4R2q59Xl7JMmTB4ctb/VOsyDhxXb497jDNNvLwldp+2ZVBEg==",
+      "path": "microsoft.identitymodel.logging/8.6.1",
+      "hashPath": "microsoft.identitymodel.logging.8.6.1.nupkg.sha512"
+    },
+    "Microsoft.IdentityModel.Protocols/8.0.1": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-uA2vpKqU3I2mBBEaeJAWPTjT9v1TZrGWKdgK6G5qJd03CLx83kdiqO9cmiK8/n1erkHzFBwU/RphP83aAe3i3g==",
+      "path": "microsoft.identitymodel.protocols/8.0.1",
+      "hashPath": "microsoft.identitymodel.protocols.8.0.1.nupkg.sha512"
+    },
+    "Microsoft.IdentityModel.Protocols.OpenIdConnect/8.0.1": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-AQDbfpL+yzuuGhO/mQhKNsp44pm5Jv8/BI4KiFXR7beVGZoSH35zMV3PrmcfvSTsyI6qrcR898NzUauD6SRigg==",
+      "path": "microsoft.identitymodel.protocols.openidconnect/8.0.1",
+      "hashPath": "microsoft.identitymodel.protocols.openidconnect.8.0.1.nupkg.sha512"
+    },
+    "Microsoft.IdentityModel.Tokens/8.6.1": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-FvED2com8LIFl9yFXneiX0uxNf9fuf8jKDFcvxC93qXOAfFa8fdLkCiur1vWF+PvgQHhsHVBe6CtDZHzsN8nCQ==",
+      "path": "microsoft.identitymodel.tokens/8.6.1",
+      "hashPath": "microsoft.identitymodel.tokens.8.6.1.nupkg.sha512"
+    },
+    "Npgsql/10.0.3": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-7nb5YzXuvWWJxB0J8DiyL3we+X4FOctZrt0fIBnucOIaIevFEEwGQVZKtiu9olXdlNAK1eNgqSral6r/jlhI4w==",
+      "path": "npgsql/10.0.3",
+      "hashPath": "npgsql.10.0.3.nupkg.sha512"
+    },
+    "System.IdentityModel.Tokens.Jwt/8.6.1": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-EXL1Tj+pizswtHHPiQyNumrTo8XOLX7SoTm7Bz00/DyiIoG2H/kQItoajSvr1MYtvDNXveqULsoWDoJFI3aHzQ==",
+      "path": "system.identitymodel.tokens.jwt/8.6.1",
+      "hashPath": "system.identitymodel.tokens.jwt.8.6.1.nupkg.sha512"
+    }
+  }
+}
