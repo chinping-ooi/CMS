@@ -251,9 +251,9 @@
 
                             <div>
                                 <label class="task-label" for="task-assigned-to">Assigned To</label>
-                                <select id="task-assigned-to" name="AssignedUserId" class="form-select">
-                                    <option value="">Unassigned</option>
+                                <select id="task-assigned-to" name="AssignedUserIds" class="form-select" multiple size="4">
                                 </select>
+                                <div class="form-text">Hold Ctrl (Windows) or Cmd (Mac) to select multiple users.</div>
                             </div>
 
                             <div class="d-grid gap-3"
@@ -398,7 +398,7 @@
 
             <div class="modal-footer">
                 <button type="button" class="btn btn-cancel px-4" data-bs-dismiss="modal">Cancel</button>
-                <button type="button" class="btn btn-success px-4" id="save-task-button">Create Task</button>
+                <button type="button" class="btn btn-action px-4" id="save-task-button">Create Task</button>
             </div>
         </div>
     </div>

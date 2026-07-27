@@ -62,4 +62,17 @@ public class TaskController : Controller
     {
         return View();
     }
+
+    [HttpGet("/task/detail")]
+    public IActionResult Detail(Guid projectId, Guid taskId)
+    {
+        if (projectId == Guid.Empty || taskId == Guid.Empty)
+        {
+            return RedirectToAction(nameof(Index));
+        }
+
+        ViewBag.ProjectId = projectId;
+        ViewBag.TaskId = taskId;
+        return View();
+    }
 }

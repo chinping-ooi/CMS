@@ -206,6 +206,17 @@ public class ProjectApiController : ControllerBase
             return BadRequest("Column is required.");
         }
 
+        var assigneeIds = (request.AssignedUserIds ?? [])
+            .Where(id => id != Guid.Empty)
+            .Distinct()
+            .ToList();
+
+        if (request.AssignedUserId.HasValue && request.AssignedUserId != Guid.Empty
+            && !assigneeIds.Contains(request.AssignedUserId.Value))
+        {
+            assigneeIds.Add(request.AssignedUserId.Value);
+        }
+
         var task = new TaskItem
         {
             Id = Guid.NewGuid(),
@@ -214,7 +225,7 @@ public class ProjectApiController : ControllerBase
             BoardType = string.IsNullOrWhiteSpace(request.BoardType) ? null : request.BoardType.Trim(),
             ProjectId = id,
             ColumnId = request.ColumnId,
-            AssignedUserId = request.AssignedUserId == Guid.Empty ? null : request.AssignedUserId,
+            AssignedUserId = assigneeIds.FirstOrDefault() == Guid.Empty ? null : assigneeIds.FirstOrDefault(),
             StartDate = request.StartDate,
             DueDate = request.DueDate,
             Priority = string.IsNullOrWhiteSpace(request.Priority) ? "Medium" : request.Priority,
@@ -245,6 +256,23 @@ public class ProjectApiController : ControllerBase
             await connection.ExecuteAsync(insertTaskTagSql, new { TaskId = task.Id, TagId = request.TagId.Value }, transaction);
         }
 
+        if (assigneeIds.Count > 0)
+        {
+            const string insertAssigneeSql = @"
+                INSERT INTO task_assignee (task_id, user_id, assigned_at)
+                VALUES (@TaskId, @UserId, @AssignedAt)";
+
+            foreach (var userId in assigneeIds)
+            {
+                await connection.ExecuteAsync(insertAssigneeSql, new
+                {
+                    TaskId = task.Id,
+                    UserId = userId,
+                    AssignedAt = DateTime.UtcNow,
+                }, transaction);
+            }
+        }
+
         await transaction.CommitAsync();
 
         return Ok(new TaskItemApiResponse
@@ -257,6 +285,244 @@ public class ProjectApiController : ControllerBase
             DueDate = task.DueDate,
             Priority = task.Priority,
             Tags = request.TagId.HasValue ? new List<ProjectTagApiResponse> { new() { Id = request.TagId.Value, Name = string.Empty } } : new List<ProjectTagApiResponse>()
+        });
+    }
+
+    [HttpGet("{projectId:guid}/tasks/{taskId:guid}")]
+    public async Task<ActionResult<TaskDetailApiResponse>> GetTask(Guid projectId, Guid taskId)
+    {
+        await using var connection = await _context.CreateOpenConnectionAsync();
+
+        const string taskSql = @"
+            SELECT ti.id, ti.title, ti.description, ti.project_id AS ProjectId, ti.column_id AS ColumnId,
+                   ti.board_type AS BoardType, ti.assigned_user_id AS AssignedUserId,
+                   ti.start_date AS StartDate, ti.due_date AS DueDate, ti.priority, ti.category AS Category,
+                   ti.created_at AS CreatedAt, ti.updated_at AS UpdatedAt,
+                   u.full_name AS AssignedUserName, u.email AS AssignedUserEmail,
+                   pc.name AS ColumnName
+            FROM task_item ti
+            LEFT JOIN users u ON u.id = ti.assigned_user_id
+            LEFT JOIN project_column pc ON pc.id = ti.column_id
+            WHERE ti.id = @TaskId AND ti.project_id = @ProjectId";
+
+        var taskRows = await connection.QueryAsync<TaskDetailRow>(taskSql, new { TaskId = taskId, ProjectId = projectId });
+        var taskRow = taskRows.FirstOrDefault();
+        if (taskRow == null)
+        {
+            return NotFound();
+        }
+
+        const string projectSql = "SELECT name FROM project WHERE id = @ProjectId";
+        var projectName = await connection.QuerySingleOrDefaultAsync<string>(projectSql, new { ProjectId = projectId });
+
+        const string checklistSql = @"
+            SELECT id, task_id AS TaskId, label AS Label, is_completed AS IsCompleted,
+                   created_at AS CreatedAt, updated_at AS UpdatedAt
+            FROM task_checklist_item
+            WHERE task_id = @TaskId
+            ORDER BY created_at";
+
+        var checklist = (await connection.QueryAsync<TaskChecklistItem>(checklistSql, new { TaskId = taskId })).ToList();
+
+        const string attachmentsSql = @"
+            SELECT id, task_id AS TaskId, file_name AS FileName, file_path AS FilePath,
+                   file_type AS FileType, file_size AS FileSize, uploaded_at AS UploadedAt
+            FROM task_attachment
+            WHERE task_id = @TaskId
+            ORDER BY uploaded_at DESC";
+
+        var attachments = (await connection.QueryAsync<TaskAttachment>(attachmentsSql, new { TaskId = taskId })).ToList();
+
+        const string tagsSql = @"
+            SELECT pt.id, pt.name, pt.color
+            FROM task_item_tag tit
+            JOIN project_tag pt ON pt.id = tit.tag_id
+            WHERE tit.task_id = @TaskId";
+
+        var tags = (await connection.QueryAsync<ProjectTag>(tagsSql, new { TaskId = taskId })).ToList();
+
+        const string assigneesSql = @"
+            SELECT ta.user_id AS UserId, u.full_name AS FullName, u.email AS Email
+            FROM task_assignee ta
+            JOIN users u ON u.id = ta.user_id
+            WHERE ta.task_id = @TaskId
+            ORDER BY ta.assigned_at";
+
+        var assignees = (await connection.QueryAsync<TaskAssigneeApiResponse>(assigneesSql, new { TaskId = taskId })).ToList();
+
+        if (assignees.Count == 0 && taskRow.AssignedUserId.HasValue
+            && !string.IsNullOrWhiteSpace(taskRow.AssignedUserName))
+        {
+            assignees.Add(new TaskAssigneeApiResponse
+            {
+                UserId = taskRow.AssignedUserId.Value,
+                FullName = taskRow.AssignedUserName,
+                Email = taskRow.AssignedUserEmail ?? string.Empty,
+            });
+        }
+
+        var categoryName = ResolveCategoryName(taskRow.Category, tags);
+        if (string.IsNullOrWhiteSpace(categoryName) && Guid.TryParse(taskRow.Category, out var categoryId))
+        {
+            categoryName = await connection.QuerySingleOrDefaultAsync<string>(
+                "SELECT name FROM project_tag WHERE id = @Id",
+                new { Id = categoryId });
+        }
+
+        if (string.IsNullOrWhiteSpace(categoryName) && tags.Count > 0)
+        {
+            categoryName = tags[0].Name;
+        }
+
+        var completedCount = checklist.Count(item => item.IsCompleted);
+        var progress = checklist.Count == 0 ? 0 : (int)Math.Round(completedCount * 100.0 / checklist.Count);
+
+        return Ok(new TaskDetailApiResponse
+        {
+            Id = taskRow.Id,
+            Title = taskRow.Title,
+            Description = taskRow.Description,
+            ProjectId = projectId,
+            ProjectName = projectName ?? string.Empty,
+            ColumnId = taskRow.ColumnId,
+            ColumnName = taskRow.ColumnName ?? string.Empty,
+            BoardType = taskRow.BoardType,
+            AssignedUserId = taskRow.AssignedUserId,
+            AssignedUserName = taskRow.AssignedUserName,
+            AssignedUserEmail = taskRow.AssignedUserEmail,
+            Assignees = assignees,
+            StartDate = taskRow.StartDate,
+            DueDate = taskRow.DueDate,
+            Priority = taskRow.Priority ?? string.Empty,
+            Category = categoryName,
+            CreatedAt = taskRow.CreatedAt,
+            UpdatedAt = taskRow.UpdatedAt,
+            Progress = progress,
+            Tags = tags.Select(tag => new ProjectTagApiResponse
+            {
+                Id = tag.Id,
+                Name = tag.Name,
+                Color = tag.Color,
+            }).ToList(),
+            Checklist = checklist.Select(item => new TaskChecklistItemApiResponse
+            {
+                Id = item.Id,
+                Label = item.Label,
+                IsCompleted = item.IsCompleted,
+                CreatedAt = item.CreatedAt,
+                UpdatedAt = item.UpdatedAt,
+            }).ToList(),
+            Attachments = attachments.Select(attachment => new TaskAttachmentApiResponse
+            {
+                Id = attachment.Id,
+                FileName = attachment.FileName,
+                FileType = attachment.FileType,
+                FileSize = attachment.FileSize,
+                UploadedAt = attachment.UploadedAt,
+            }).ToList(),
+        });
+    }
+
+    [HttpPost("{projectId:guid}/tasks/{taskId:guid}/checklist")]
+    public async Task<ActionResult<TaskChecklistItemApiResponse>> AddChecklistItem(
+        Guid projectId,
+        Guid taskId,
+        CreateChecklistItemRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(request.Label))
+        {
+            return BadRequest("Label is required.");
+        }
+
+        await using var connection = await _context.CreateOpenConnectionAsync();
+
+        const string taskExistsSql = "SELECT COUNT(1) FROM task_item WHERE id = @TaskId AND project_id = @ProjectId";
+        var taskExists = await connection.ExecuteScalarAsync<int>(taskExistsSql, new { TaskId = taskId, ProjectId = projectId }) > 0;
+        if (!taskExists)
+        {
+            return NotFound();
+        }
+
+        var item = new TaskChecklistItem
+        {
+            Id = Guid.NewGuid(),
+            TaskId = taskId,
+            Label = request.Label.Trim(),
+            IsCompleted = false,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow,
+        };
+
+        const string insertSql = @"
+            INSERT INTO task_checklist_item (id, task_id, label, is_completed, created_at, updated_at)
+            VALUES (@Id, @TaskId, @Label, @IsCompleted, @CreatedAt, @UpdatedAt)";
+
+        await connection.ExecuteAsync(insertSql, item);
+
+        return Ok(new TaskChecklistItemApiResponse
+        {
+            Id = item.Id,
+            Label = item.Label,
+            IsCompleted = item.IsCompleted,
+            CreatedAt = item.CreatedAt,
+            UpdatedAt = item.UpdatedAt,
+        });
+    }
+
+    [HttpPut("{projectId:guid}/tasks/{taskId:guid}/checklist/{itemId:guid}")]
+    public async Task<ActionResult<TaskChecklistItemApiResponse>> UpdateChecklistItem(
+        Guid projectId,
+        Guid taskId,
+        Guid itemId,
+        UpdateChecklistItemRequest request)
+    {
+        await using var connection = await _context.CreateOpenConnectionAsync();
+
+        const string existingSql = @"
+            SELECT ci.id, ci.task_id AS TaskId, ci.label AS Label, ci.is_completed AS IsCompleted,
+                   ci.created_at AS CreatedAt, ci.updated_at AS UpdatedAt
+            FROM task_checklist_item ci
+            JOIN task_item ti ON ti.id = ci.task_id
+            WHERE ci.id = @ItemId AND ci.task_id = @TaskId AND ti.project_id = @ProjectId";
+
+        var existing = await connection.QuerySingleOrDefaultAsync<TaskChecklistItem>(existingSql, new
+        {
+            ItemId = itemId,
+            TaskId = taskId,
+            ProjectId = projectId,
+        });
+
+        if (existing == null)
+        {
+            return NotFound();
+        }
+
+        if (request.IsCompleted.HasValue)
+        {
+            existing.IsCompleted = request.IsCompleted.Value;
+        }
+
+        if (!string.IsNullOrWhiteSpace(request.Label))
+        {
+            existing.Label = request.Label.Trim();
+        }
+
+        existing.UpdatedAt = DateTime.UtcNow;
+
+        const string updateSql = @"
+            UPDATE task_checklist_item
+            SET label = @Label, is_completed = @IsCompleted, updated_at = @UpdatedAt
+            WHERE id = @Id AND task_id = @TaskId";
+
+        await connection.ExecuteAsync(updateSql, existing);
+
+        return Ok(new TaskChecklistItemApiResponse
+        {
+            Id = existing.Id,
+            Label = existing.Label,
+            IsCompleted = existing.IsCompleted,
+            CreatedAt = existing.CreatedAt,
+            UpdatedAt = existing.UpdatedAt,
         });
     }
 
@@ -388,6 +654,21 @@ public class ProjectApiController : ControllerBase
         return NoContent();
     }
 
+    private static string? ResolveCategoryName(string? category, IReadOnlyList<ProjectTag> tags)
+    {
+        if (string.IsNullOrWhiteSpace(category))
+        {
+            return null;
+        }
+
+        if (Guid.TryParse(category, out var categoryId))
+        {
+            return tags.FirstOrDefault(tag => tag.Id == categoryId)?.Name;
+        }
+
+        return category;
+    }
+
     private static ProjectApiResponse MapProject(Project project)
     {
         return new ProjectApiResponse
@@ -494,6 +775,7 @@ public sealed class CreateTaskItemRequest
     public string BoardType { get; set; } = string.Empty;
     public Guid ColumnId { get; set; }
     public Guid? AssignedUserId { get; set; }
+    public List<Guid>? AssignedUserIds { get; set; }
     public DateTime? StartDate { get; set; }
     public DateTime? DueDate { get; set; }
     public string Priority { get; set; } = string.Empty;
@@ -520,4 +802,86 @@ public sealed class TaskTagRow
     public Guid Id { get; init; }
     public string Name { get; init; } = string.Empty;
     public string? Color { get; init; }
+}
+
+public sealed class TaskDetailRow
+{
+    public Guid Id { get; init; }
+    public string Title { get; init; } = string.Empty;
+    public string? Description { get; init; }
+    public Guid ProjectId { get; init; }
+    public Guid ColumnId { get; init; }
+    public string? BoardType { get; init; }
+    public Guid? AssignedUserId { get; init; }
+    public string? AssignedUserName { get; init; }
+    public string? AssignedUserEmail { get; init; }
+    public DateTime? StartDate { get; init; }
+    public DateTime? DueDate { get; init; }
+    public string? Priority { get; init; }
+    public string? Category { get; init; }
+    public DateTime CreatedAt { get; init; }
+    public DateTime UpdatedAt { get; init; }
+    public string? ColumnName { get; init; }
+}
+
+public sealed class TaskDetailApiResponse
+{
+    public Guid Id { get; set; }
+    public string Title { get; set; } = string.Empty;
+    public string? Description { get; set; }
+    public Guid ProjectId { get; set; }
+    public string ProjectName { get; set; } = string.Empty;
+    public Guid ColumnId { get; set; }
+    public string ColumnName { get; set; } = string.Empty;
+    public string? BoardType { get; set; }
+    public Guid? AssignedUserId { get; set; }
+    public string? AssignedUserName { get; set; }
+    public string? AssignedUserEmail { get; set; }
+    public List<TaskAssigneeApiResponse> Assignees { get; set; } = [];
+    public DateTime? StartDate { get; set; }
+    public DateTime? DueDate { get; set; }
+    public string Priority { get; set; } = string.Empty;
+    public string? Category { get; set; }
+    public DateTime CreatedAt { get; set; }
+    public DateTime UpdatedAt { get; set; }
+    public int Progress { get; set; }
+    public List<ProjectTagApiResponse> Tags { get; set; } = [];
+    public List<TaskChecklistItemApiResponse> Checklist { get; set; } = [];
+    public List<TaskAttachmentApiResponse> Attachments { get; set; } = [];
+}
+
+public sealed class TaskChecklistItemApiResponse
+{
+    public Guid Id { get; set; }
+    public string Label { get; set; } = string.Empty;
+    public bool IsCompleted { get; set; }
+    public DateTime CreatedAt { get; set; }
+    public DateTime UpdatedAt { get; set; }
+}
+
+public sealed class TaskAttachmentApiResponse
+{
+    public Guid Id { get; set; }
+    public string FileName { get; set; } = string.Empty;
+    public string? FileType { get; set; }
+    public long FileSize { get; set; }
+    public DateTime UploadedAt { get; set; }
+}
+
+public sealed class TaskAssigneeApiResponse
+{
+    public Guid UserId { get; set; }
+    public string FullName { get; set; } = string.Empty;
+    public string Email { get; set; } = string.Empty;
+}
+
+public sealed class CreateChecklistItemRequest
+{
+    public string Label { get; set; } = string.Empty;
+}
+
+public sealed class UpdateChecklistItemRequest
+{
+    public string? Label { get; set; }
+    public bool? IsCompleted { get; set; }
 }

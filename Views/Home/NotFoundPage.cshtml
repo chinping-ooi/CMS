@@ -1,18 +1,66 @@
 @{
+    Layout = "_StandaloneLayout";
     ViewData["Title"] = "Page Not Found";
 }
 
-<div class="container py-5">
-    <div class="row justify-content-center">
-        <div class="col-md-8">
-            <div class="card border-0 shadow-sm">
-                <div class="card-body text-center p-5">
-                    <h1 class="display-4 text-primary">404</h1>
-                    <h2 class="mb-3">Page not found</h2>
-                    <p class="text-muted mb-4">The page you are looking for does not exist or has been moved.</p>
-                    <a asp-controller="Task" asp-action="Index" class="btn btn-primary px-4">Go to Tasks</a>
-                </div>
-            </div>
+@section Styles {
+    <style>
+        .standalone-page {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1.5rem;
+        }
+
+        .not-found-card {
+            width: 100%;
+            max-width: 480px;
+            background: #ffffff;
+            border: 1px solid #e5e7eb;
+            border-radius: 16px;
+            padding: 3rem 2rem;
+            box-shadow: 0 15px 40px rgba(0, 0, 0, .08);
+            text-align: center;
+        }
+
+        .not-found-code {
+            font-size: 5rem;
+            font-weight: 700;
+            line-height: 1;
+            color: #2f6fed;
+            margin-bottom: 0.75rem;
+        }
+
+        .btn-back {
+            background: #2f6fed;
+            border-color: #2f6fed;
+            font-weight: 500;
+            padding: 0.55rem 1.5rem;
+            border-radius: 8px;
+        }
+
+        .btn-back:hover {
+            background: #1c56d3;
+            border-color: #1c56d3;
+        }
+    </style>
+}
+
+<div class="standalone-page">
+    <div class="not-found-card">
+        <div class="not-found-code">404</div>
+        <h2 class="fw-semibold mb-2">Page not found</h2>
+        <p class="text-muted mb-4">
+            The page you are looking for does not exist or has been moved.
+        </p>
+        <div class="d-flex justify-content-center gap-2 flex-wrap">
+            <button type="button" class="btn btn-primary btn-back" onclick="window.history.back()">
+                <i class="bi bi-arrow-left me-1"></i> Go Back
+            </button>
+            <a asp-controller="Task" asp-action="Index" class="btn btn-outline-secondary px-4">
+                Go to Tasks
+            </a>
         </div>
     </div>
 </div>

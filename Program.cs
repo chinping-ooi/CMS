@@ -1,10 +1,68 @@
 using CMS.Data;
+using CMS.Services.Auth;
 using Dapper;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
 using Npgsql;
+using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddTransient<DapperContext>();
+builder.Services.Configure<JwtSettings>(builder.Configuration.GetSection("Jwt"));
+builder.Services.AddSingleton<IPasswordHasher, PasswordHasher>();
+builder.Services.AddSingleton<IJwtTokenService, JwtTokenService>();
+
+var jwtSettings = builder.Configuration.GetSection("Jwt").Get<JwtSettings>() ?? new JwtSettings();
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =>
+    {
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidateAudience = true,
+            ValidateLifetime = true,
+            ValidateIssuerSigningKey = true,
+            ValidIssuer = jwtSettings.Issuer,
+            ValidAudience = jwtSettings.Audience,
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSettings.Key)),
+            ClockSkew = TimeSpan.FromMinutes(1),
+        };
+
+        options.Events = new JwtBearerEvents
+        {
+            OnMessageReceived = context =>
+            {
+                if (string.IsNullOrEmpty(context.Token)
+                    && context.Request.Cookies.TryGetValue("cms_token", out var token))
+                {
+                    context.Token = token;
+                }
+
+                return Task.CompletedTask;
+            },
+            OnChallenge = context =>
+            {
+                if (!context.Request.Path.StartsWithSegments("/api"))
+                {
+                    context.HandleResponse();
+                    context.Response.Redirect("/login");
+                }
+
+                return Task.CompletedTask;
+            },
+        };
+    });
+
+builder.Services.AddAuthorization(options =>
+{
+    // All application routes require a valid JWT unless explicitly marked
+    // with [AllowAnonymous], such as the login page and auth endpoints.
+    options.FallbackPolicy = new AuthorizationPolicyBuilder()
+        .RequireAuthenticatedUser()
+        .Build();
+});
 
 builder.Services.AddHttpClient();
 
@@ -38,6 +96,8 @@ using (var scope = app.Services.CreateScope())
             id uuid NOT NULL PRIMARY KEY,
             full_name character varying(255) NOT NULL,
             email character varying(255) NOT NULL,
+            password_hash text NULL,
+            password_salt text NULL,
             created_at timestamp with time zone NOT NULL
         );
 
@@ -128,9 +188,90 @@ using (var scope = app.Services.CreateScope())
             CONSTRAINT fk_task_attachment_task FOREIGN KEY (task_id)
                 REFERENCES task_item (id) ON DELETE CASCADE
         );
+
+        CREATE TABLE IF NOT EXISTS task_checklist_item (
+            id uuid NOT NULL PRIMARY KEY,
+            task_id uuid NOT NULL,
+            label character varying(500) NOT NULL,
+            is_completed boolean NOT NULL DEFAULT false,
+            created_at timestamp with time zone NOT NULL,
+            updated_at timestamp with time zone NOT NULL,
+            CONSTRAINT fk_task_checklist_item_task FOREIGN KEY (task_id)
+                REFERENCES task_item (id) ON DELETE CASCADE
+        );
+
+        CREATE TABLE IF NOT EXISTS task_assignee (
+            task_id uuid NOT NULL,
+            user_id uuid NOT NULL,
+            assigned_at timestamp with time zone NOT NULL,
+            CONSTRAINT pk_task_assignee PRIMARY KEY (task_id, user_id),
+            CONSTRAINT fk_task_assignee_task FOREIGN KEY (task_id)
+                REFERENCES task_item (id) ON DELETE CASCADE,
+            CONSTRAINT fk_task_assignee_user FOREIGN KEY (user_id)
+                REFERENCES users (id) ON DELETE CASCADE
+        );
         """);
 
     await connection.ExecuteAsync("ALTER TABLE task_item ADD COLUMN IF NOT EXISTS board_type text NULL;");
+
+    await connection.ExecuteAsync(
+        """
+        ALTER TABLE users ADD COLUMN IF NOT EXISTS password_hash text NULL;
+        ALTER TABLE users ADD COLUMN IF NOT EXISTS password_salt text NULL;
+        CREATE UNIQUE INDEX IF NOT EXISTS ix_users_email_lower ON users (LOWER(email));
+        """);
+
+    await connection.ExecuteAsync(
+        """
+        INSERT INTO task_assignee (task_id, user_id, assigned_at)
+        SELECT ti.id, ti.assigned_user_id, ti.created_at
+        FROM task_item ti
+        WHERE ti.assigned_user_id IS NOT NULL
+        ON CONFLICT (task_id, user_id) DO NOTHING;
+        """);
+
+    var passwordHasher = scope.ServiceProvider.GetRequiredService<IPasswordHasher>();
+    var adminExists = await connection.ExecuteScalarAsync<int>(
+        "SELECT COUNT(1) FROM users WHERE LOWER(email) = LOWER(@Email)",
+        new { Email = "admin@cms.local" });
+
+    if (adminExists == 0)
+    {
+        var (hash, salt) = passwordHasher.HashPassword("Admin123!");
+        const string insertAdminSql = @"
+            INSERT INTO users (id, full_name, email, password_hash, password_salt, created_at)
+            VALUES (@Id, @FullName, @Email, @PasswordHash, @PasswordSalt, @CreatedAt)";
+
+        await connection.ExecuteAsync(insertAdminSql, new
+        {
+            Id = Guid.NewGuid(),
+            FullName = "Admin User",
+            Email = "admin@cms.local",
+            PasswordHash = hash,
+            PasswordSalt = salt,
+            CreatedAt = DateTime.UtcNow,
+        });
+    }
+    else
+    {
+        const string adminCredentialsSql = @"
+            SELECT password_hash AS PasswordHash, password_salt AS PasswordSalt
+            FROM users
+            WHERE LOWER(email) = LOWER(@Email)
+            LIMIT 1";
+
+        var credentials = await connection.QuerySingleAsync<AdminCredentials>(
+            adminCredentialsSql,
+            new { Email = "admin@cms.local" });
+
+        if (!IsBase64(credentials.PasswordHash) || !IsBase64(credentials.PasswordSalt))
+        {
+            var (hash, salt) = passwordHasher.HashPassword("Admin123!");
+            await connection.ExecuteAsync(
+                "UPDATE users SET password_hash = @Hash, password_salt = @Salt WHERE LOWER(email) = LOWER(@Email)",
+                new { Hash = hash, Salt = salt, Email = "admin@cms.local" });
+        }
+    }
 }
 
 if (!app.Environment.IsDevelopment())
@@ -143,9 +284,10 @@ if (!app.Environment.IsDevelopment())
 app.UseHttpsRedirection();
 app.UseRouting();
 
+app.UseAuthentication();
 app.UseAuthorization();
 
-app.MapStaticAssets();
+app.MapStaticAssets().AllowAnonymous();
 
 app.MapControllers();
 
@@ -153,3 +295,19 @@ app.MapControllerRoute(name: "default", pattern: "{controller=Home}/{action=Inde
     .WithStaticAssets();
 
 app.Run();
+
+static bool IsBase64(string? value)
+{
+    if (string.IsNullOrWhiteSpace(value))
+    {
+        return false;
+    }
+
+    return Convert.TryFromBase64String(value, new byte[value.Length], out _);
+}
+
+file sealed class AdminCredentials
+{
+    public string? PasswordHash { get; set; }
+    public string? PasswordSalt { get; set; }
+}

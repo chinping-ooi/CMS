@@ -1,0 +1,172 @@
+@{
+    Layout = "_StandaloneLayout";
+    ViewData["Title"] = "Login";
+}
+
+@section Styles {
+    <style>
+        .standalone-page {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1.5rem;
+        }
+
+        .login-card {
+            width: 100%;
+            max-width: 380px;
+            background: #ffffff;
+            border: 1px solid #e5e7eb;
+            border-radius: 16px;
+            padding: 32px;
+            box-shadow: 0 15px 40px rgba(0, 0, 0, .08);
+        }
+
+        .logo {
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            background: #eef4ff;
+            color: #2f6fed;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: auto;
+            font-size: 24px;
+            font-weight: bold;
+        }
+
+        .form-control {
+            height: 45px;
+            border-radius: 8px;
+            padding-left: 42px;
+        }
+
+        .input-group-custom {
+            position: relative;
+        }
+
+        .input-group-custom i {
+            position: absolute;
+            left: 14px;
+            top: 13px;
+            color: #6c757d;
+            z-index: 2;
+        }
+
+        .btn-login {
+            height: 45px;
+            border-radius: 8px;
+            font-weight: 500;
+            background: #2f6fed;
+            border-color: #2f6fed;
+        }
+
+        .btn-login:hover {
+            background: #1c56d3;
+            border-color: #1c56d3;
+        }
+
+        .divider {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: #9ca3af;
+            font-size: 13px;
+            margin: 22px 0;
+        }
+
+        .divider::before,
+        .divider::after {
+            content: "";
+            flex: 1;
+            height: 1px;
+            background: #e5e7eb;
+        }
+
+        .social-btn {
+            height: 42px;
+            border-radius: 8px;
+            border: 1px solid #dee2e6;
+            background: #fff;
+            transition: .2s;
+        }
+
+        .social-btn:hover {
+            background: #f8f9fa;
+        }
+    </style>
+}
+
+<div class="standalone-page">
+    <div class="login-card">
+        <div class="logo mb-3">
+            <i class="bi bi-kanban"></i>
+        </div>
+
+        <h3 class="text-center fw-semibold mb-1">Welcome Back</h3>
+
+        <p class="text-center text-muted small mb-4">
+            Don't have an account yet?
+            <a href="#" class="text-primary text-decoration-none">Sign up</a>
+        </p>
+
+        <form id="loginForm">
+            <div class="mb-3 input-group-custom">
+                <i class="bi bi-envelope"></i>
+                <input id="email" type="email" class="form-control" placeholder="Email address" autocomplete="username" required>
+            </div>
+
+            <div class="mb-3 input-group-custom">
+                <i class="bi bi-lock"></i>
+                <input id="password" type="password" class="form-control" placeholder="Password" autocomplete="current-password" required>
+            </div>
+
+            <p id="loginError" class="text-danger small d-none" role="alert"></p>
+            <button id="loginButton" type="submit" class="btn btn-primary w-100 btn-login">Login</button>
+        </form>
+
+        <div class="divider">OR</div>
+
+        <div class="row g-2">
+            <div class="col-4">
+                <button type="button" class="btn social-btn w-100"><i class="bi bi-apple"></i></button>
+            </div>
+            <div class="col-4">
+                <button type="button" class="btn social-btn w-100"><i class="bi bi-google text-danger"></i></button>
+            </div>
+            <div class="col-4">
+                <button type="button" class="btn social-btn w-100"><i class="bi bi-twitter-x"></i></button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        $('#loginForm').on('submit', function (event) {
+            event.preventDefault();
+            var $loginButton = $('#loginButton');
+            var $loginError = $('#loginError');
+
+            $loginError.addClass('d-none');
+            $loginButton.prop('disabled', true).text('Signing in...');
+
+            $.ajax({
+                url: '/api/auth/login',
+                method: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify({
+                    email: $('#email').val(),
+                    password: $('#password').val()
+                })
+            }).done(function () {
+                window.location.assign('/');
+            }).fail(function (xhr) {
+                $loginError.text(xhr.responseText || 'Unable to sign in. Please try again.').removeClass('d-none');
+                $loginButton.prop('disabled', false).text('Login');
+            });
+        });
+    </script>
+}

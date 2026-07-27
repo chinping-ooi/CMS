@@ -1,0 +1,650 @@
+@{
+    ViewData["Title"] = "Task Detail";
+    var projectId = ViewBag.ProjectId as Guid? ?? Guid.Empty;
+    var taskId = ViewBag.TaskId as Guid? ?? Guid.Empty;
+}
+
+<style>
+    .kb-topbar { background: #fff; }
+
+    .kb-avatar-initials {
+        width: 38px;
+        height: 38px;
+        border-radius: 50%;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.8rem;
+        font-weight: 600;
+        flex-shrink: 0;
+    }
+
+    .kb-btn-primary {
+        background: #2f6fed;
+        color: #fff;
+        border: none;
+        font-weight: 500;
+    }
+
+    .kb-btn-primary:hover {
+        background: #1c56d3;
+        color: #fff;
+    }
+
+    .kb-btn-light {
+        background: #fff;
+        border: 1px solid #dee2e6;
+        border-radius: 10px;
+    }
+
+    .kb-btn-light:hover {
+        background: #f8f9fa;
+        border-color: #dbe2ea;
+    }
+
+    .kb-project-tag {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 4px 10px;
+        font-size: 12px;
+        background: color-mix(in srgb, var(--tag-color) 20%, white 80%);
+        color: #374151;
+        border: 1px solid var(--tag-color);
+    }
+
+    .kb-detail-card {
+        background: #fff;
+        border: 1px solid #dbe2ea;
+        box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+    }
+
+    .kb-detail-card-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0.85rem 1rem;
+        border-bottom: 1px solid #e5e7eb;
+        font-weight: 600;
+        font-size: 0.95rem;
+    }
+
+    .kb-detail-card-body { padding: 1rem; }
+
+    .kb-info-label {
+        font-size: 0.75rem;
+        font-weight: 600;
+        color: #6b7280;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        margin-bottom: 0.35rem;
+    }
+
+    .kb-info-value {
+        color: #111827;
+        font-size: 0.95rem;
+    }
+
+    .kb-detail-item { margin-bottom: 1.1rem; }
+    .kb-detail-item:last-child { margin-bottom: 0; }
+
+    .kb-task-title {
+        font-weight: 700;
+        font-size: 1.35rem;
+        color: #111827;
+    }
+
+    .kb-status-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        padding: 4px 10px;
+        font-size: 12px;
+        font-weight: 500;
+        background: #edf1f7;
+        color: #374151;
+        border: 1px solid #dbe2ea;
+    }
+
+    .kb-priority-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        padding: 4px 10px;
+        font-size: 12px;
+        font-weight: 500;
+        background: #fff7ed;
+        color: #9a3412;
+        border: 1px solid #fdba74;
+    }
+
+    .kb-checklist-item {
+        display: flex;
+        align-items: flex-start;
+        gap: 0.65rem;
+        padding: 0.5rem 0;
+        border-bottom: 1px solid #f3f4f6;
+        cursor: pointer;
+    }
+
+    .kb-checklist-item-content {
+        flex: 1;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 0.75rem;
+        min-width: 0;
+    }
+
+    .kb-checklist-date {
+        font-size: 0.75rem;
+        white-space: nowrap;
+        flex-shrink: 0;
+    }
+
+    .kb-checklist-item:last-child { border-bottom: none; }
+
+    .kb-checklist-item input {
+        width: 1rem;
+        height: 1rem;
+        margin: 0;
+        flex-shrink: 0;
+        cursor: pointer;
+    }
+
+    .kb-attachment-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+        padding: 0.75rem;
+        border: 1px solid #e5e7eb;
+        border-radius: 8px;
+        margin-bottom: 0.65rem;
+    }
+
+    .kb-attachment-row:last-child { margin-bottom: 0; }
+
+    .kb-attachment-icon {
+        width: 40px;
+        height: 40px;
+        border-radius: 8px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.1rem;
+        flex-shrink: 0;
+    }
+
+    .kb-activity-item {
+        padding-bottom: 1rem;
+        margin-bottom: 1rem;
+        border-bottom: 1px solid #f3f4f6;
+    }
+
+    .kb-activity-item:last-child {
+        padding-bottom: 0;
+        margin-bottom: 0;
+        border-bottom: none;
+    }
+
+    .kb-assignee-row {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        padding: 0.5rem 0;
+    }
+
+    .kb-progress-bar {
+        height: 8px;
+        background: #edf1f7;
+        border-radius: 999px;
+        overflow: hidden;
+    }
+
+    .kb-progress-bar-fill {
+        height: 100%;
+        background: #2f6fed;
+        border-radius: 999px;
+        transition: width 0.2s ease;
+    }
+
+    .kb-add-checklist-form {
+        display: none;
+        gap: 0.5rem;
+        margin-bottom: 0.75rem;
+    }
+
+    .kb-add-checklist-form.show { display: flex; }
+</style>
+
+<div id="task-detail-root" data-project-id="@projectId" data-task-id="@taskId">
+
+    <div id="task-detail-loading" class="text-center py-5 text-muted">
+        <div class="spinner-border spinner-border-sm me-2" role="status"></div>
+        Loading task...
+    </div>
+
+    <div id="task-detail-content" class="d-none">
+
+        <div class="kb-topbar mb-3 p-3 border rounded">
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+                <div class="d-flex align-items-center gap-2">
+                    <a id="back-link" href="/task" class="btn kb-btn-light">
+                        <i class="bi bi-arrow-left"></i>
+                    </a>
+                    <div>
+                        <div id="task-project-name" class="text-muted small"></div>
+                        <div id="task-title" class="kb-task-title"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="task-badges" class="mb-3 d-flex flex-wrap gap-2 align-items-center"></div>
+
+        <div class="row g-3">
+            <div class="col-lg-8 d-flex flex-column gap-3">
+
+                <div class="kb-detail-card rounded-3">
+                    <div class="kb-detail-card-header">
+                        <span><i class="bi bi-card-text me-2"></i>Description</span>
+                    </div>
+                    <div class="kb-detail-card-body">
+                        <p id="task-description" class="text-muted mb-0" style="line-height: 1.6;"></p>
+                    </div>
+                </div>
+
+                <div class="kb-detail-card rounded-3">
+                    <div class="kb-detail-card-header">
+                        <span><i class="bi bi-check2-square me-2"></i>Checklist</span>
+                        <button type="button" id="add-checklist-toggle" class="btn btn-sm kb-btn-light">
+                            <i class="bi bi-plus"></i> Add Item
+                        </button>
+                    </div>
+                    <div class="kb-detail-card-body">
+                        <div id="add-checklist-form" class="kb-add-checklist-form">
+                            <input type="text" id="new-checklist-label" class="form-control form-control-sm" placeholder="Checklist item label" maxlength="500">
+                            <button type="button" id="add-checklist-submit" class="btn btn-sm kb-btn-primary">Add</button>
+                            <button type="button" id="add-checklist-cancel" class="btn btn-sm kb-btn-light">Cancel</button>
+                        </div>
+
+                        <div class="kb-progress-bar mb-2">
+                            <div id="checklist-progress-fill" class="kb-progress-bar-fill" style="width: 0%"></div>
+                        </div>
+                        <small id="checklist-progress-text" class="text-muted d-block mb-3">0 of 0 items completed</small>
+
+                        <div id="checklist-items"></div>
+                        <div id="checklist-empty" class="text-muted small d-none">No checklist items yet.</div>
+                    </div>
+                </div>
+
+                <div class="kb-detail-card rounded-3">
+                    <div class="kb-detail-card-header">
+                        <span><i class="bi bi-paperclip me-2"></i>Attachments</span>
+                    </div>
+                    <div class="kb-detail-card-body">
+                        <div id="attachment-list"></div>
+                        <div id="attachment-empty" class="text-muted small">No attachments.</div>
+                    </div>
+                </div>
+
+                <div class="kb-detail-card rounded-3">
+                    <div class="kb-detail-card-header">
+                        <span><i class="bi bi-clock-history me-2"></i>Activity</span>
+                    </div>
+                    <div class="kb-detail-card-body">
+                        <div class="kb-activity-item">
+                            <div class="text-muted">No activity recorded yet.</div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            <div class="col-lg-4">
+                <div class="kb-detail-card rounded-3">
+                    <div class="kb-detail-card-header">
+                        <span><i class="bi bi-info-circle me-2"></i>Task Information</span>
+                    </div>
+                    <div class="kb-detail-card-body">
+
+                        <div class="kb-detail-item">
+                            <div class="kb-info-label">Assigned To</div>
+                            <div id="task-assignee"></div>
+                        </div>
+
+                        <hr class="my-3" style="border-color: #e5e7eb;">
+
+                        <div class="kb-detail-item">
+                            <div class="kb-info-label">Start Date</div>
+                            <div id="task-start-date" class="kb-info-value"></div>
+                        </div>
+
+                        <div class="kb-detail-item">
+                            <div class="kb-info-label">Due Date</div>
+                            <div id="task-due-date" class="kb-info-value"></div>
+                        </div>
+
+                        <div class="kb-detail-item">
+                            <div class="kb-info-label">Category</div>
+                            <div id="task-category" class="kb-info-value"></div>
+                        </div>
+
+                        <div class="kb-detail-item">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <span class="kb-info-label mb-0">Progress</span>
+                                <strong id="sidebar-progress-value" class="text-primary">0%</strong>
+                            </div>
+                            <div class="kb-progress-bar">
+                                <div id="sidebar-progress-fill" class="kb-progress-bar-fill" style="width: 0%"></div>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<script>
+    (function () {
+        const root = document.getElementById('task-detail-root');
+        const projectId = root?.dataset.projectId;
+        const taskId = root?.dataset.taskId;
+
+        const loadingEl = document.getElementById('task-detail-loading');
+        const contentEl = document.getElementById('task-detail-content');
+        const backLink = document.getElementById('back-link');
+        const checklistItemsEl = document.getElementById('checklist-items');
+        const checklistEmptyEl = document.getElementById('checklist-empty');
+        const checklistProgressFill = document.getElementById('checklist-progress-fill');
+        const checklistProgressText = document.getElementById('checklist-progress-text');
+        const sidebarProgressFill = document.getElementById('sidebar-progress-fill');
+        const sidebarProgressValue = document.getElementById('sidebar-progress-value');
+        const addChecklistToggle = document.getElementById('add-checklist-toggle');
+        const addChecklistForm = document.getElementById('add-checklist-form');
+        const newChecklistLabel = document.getElementById('new-checklist-label');
+        const addChecklistSubmit = document.getElementById('add-checklist-submit');
+        const addChecklistCancel = document.getElementById('add-checklist-cancel');
+
+        let taskData = null;
+        let checklist = [];
+
+        function formatDate(value) {
+            if (!value) return '—';
+            return new Date(value).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
+        }
+
+        function formatFileSize(bytes) {
+            if (bytes < 1024) return `${bytes} B`;
+            if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+            return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+        }
+
+        function getInitials(name) {
+            return (name || '?').split(' ').filter(Boolean).map(part => part[0]).join('').slice(0, 2).toUpperCase();
+        }
+
+        function getAttachmentIconClass(fileName) {
+            const ext = (fileName || '').split('.').pop()?.toLowerCase();
+            if (ext === 'pdf') return { icon: 'bi-file-earmark-pdf', bg: 'bg-danger' };
+            if (['png', 'jpg', 'jpeg', 'gif', 'webp'].includes(ext)) return { icon: 'bi-image', bg: '', style: 'background:#2f6fed;' };
+            if (['doc', 'docx'].includes(ext)) return { icon: 'bi-file-earmark-word', bg: 'bg-success' };
+            return { icon: 'bi-file-earmark', bg: 'bg-secondary' };
+        }
+
+        function calculateProgress(items) {
+            if (!items.length) return 0;
+            const completed = items.filter(item => item.isCompleted).length;
+            return Math.round((completed / items.length) * 100);
+        }
+
+        function updateProgressBars() {
+            const total = checklist.length;
+            const completed = checklist.filter(item => item.isCompleted).length;
+            const progress = calculateProgress(checklist);
+
+            checklistProgressFill.style.width = `${progress}%`;
+            checklistProgressText.textContent = `${completed} of ${total} items completed`;
+            sidebarProgressFill.style.width = `${progress}%`;
+            sidebarProgressValue.textContent = `${progress}%`;
+        }
+
+        function getChecklistDateLabel(item) {
+            if (item.isCompleted) {
+                return `Updated ${formatDate(item.updatedAt)}`;
+            }
+            return `Created ${formatDate(item.createdAt)}`;
+        }
+
+        function renderAssignees(task) {
+            const assigneeEl = document.getElementById('task-assignee');
+            const assignees = (task.assignees && task.assignees.length)
+                ? task.assignees
+                : (task.assignedUserName
+                    ? [{ fullName: task.assignedUserName, email: task.assignedUserEmail || '' }]
+                    : []);
+
+            if (!assignees.length) {
+                assigneeEl.innerHTML = '<div class="text-muted">Unassigned</div>';
+                return;
+            }
+
+            const colors = ['#2f6fed', '#6366f1', '#198754', '#dc3545', '#fd7e14'];
+            assigneeEl.innerHTML = assignees.map((assignee, index) => `
+                <div class="kb-assignee-row">
+                    <div class="kb-avatar-initials text-white" style="background:${colors[index % colors.length]}">${getInitials(assignee.fullName)}</div>
+                    <div>
+                        <div class="fw-semibold">${assignee.fullName}</div>
+                        <small class="text-muted">${assignee.email || ''}</small>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function renderChecklist() {
+            checklistItemsEl.innerHTML = '';
+            checklistEmptyEl.classList.toggle('d-none', checklist.length > 0);
+
+            checklist.forEach(item => {
+                const row = document.createElement('label');
+                row.className = 'kb-checklist-item';
+                row.innerHTML = `
+                    <input class="form-check-input" type="checkbox" ${item.isCompleted ? 'checked' : ''} data-item-id="${item.id}">
+                    <div class="kb-checklist-item-content">
+                        <span class="${item.isCompleted ? 'text-decoration-line-through text-muted' : ''}">${item.label}</span>
+                        <small class="kb-checklist-date text-muted">${getChecklistDateLabel(item)}</small>
+                    </div>
+                `;
+
+                const checkbox = row.querySelector('input');
+                const labelSpan = row.querySelector('.kb-checklist-item-content span');
+                const dateSpan = row.querySelector('.kb-checklist-date');
+
+                checkbox.addEventListener('change', () => {
+                    toggleChecklistItem(item.id, checkbox.checked, checkbox, labelSpan, dateSpan);
+                });
+
+                checklistItemsEl.appendChild(row);
+            });
+
+            updateProgressBars();
+        }
+
+        async function toggleChecklistItem(itemId, isCompleted, checkbox, labelSpan, dateSpan) {
+            const previousState = !isCompleted;
+            try {
+                const response = await fetch(`/api/projects/${projectId}/tasks/${taskId}/checklist/${itemId}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ isCompleted })
+                });
+
+                if (!response.ok) throw new Error('Unable to update checklist item');
+
+                const updated = await response.json();
+                const index = checklist.findIndex(item => item.id === itemId);
+                if (index >= 0) checklist[index] = updated;
+
+                labelSpan.classList.toggle('text-decoration-line-through', isCompleted);
+                labelSpan.classList.toggle('text-muted', isCompleted);
+                dateSpan.textContent = getChecklistDateLabel(updated);
+                updateProgressBars();
+            } catch (error) {
+                checkbox.checked = previousState;
+                console.error(error);
+                alert('Could not update checklist item.');
+            }
+        }
+
+        async function addChecklistItem() {
+            const label = newChecklistLabel.value.trim();
+            if (!label) {
+                newChecklistLabel.focus();
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/projects/${projectId}/tasks/${taskId}/checklist`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ label })
+                });
+
+                if (!response.ok) throw new Error('Unable to add checklist item');
+
+                const item = await response.json();
+                checklist.push(item);
+                newChecklistLabel.value = '';
+                addChecklistForm.classList.remove('show');
+                renderChecklist();
+            } catch (error) {
+                console.error(error);
+                alert('Could not add checklist item.');
+            }
+        }
+
+        function renderAttachments(attachments) {
+            const listEl = document.getElementById('attachment-list');
+            const emptyEl = document.getElementById('attachment-empty');
+            listEl.innerHTML = '';
+
+            if (!attachments.length) {
+                emptyEl.classList.remove('d-none');
+                return;
+            }
+
+            emptyEl.classList.add('d-none');
+            attachments.forEach(attachment => {
+                const icon = getAttachmentIconClass(attachment.fileName);
+                const row = document.createElement('div');
+                row.className = 'kb-attachment-row';
+                row.innerHTML = `
+                    <div class="d-flex align-items-center gap-3">
+                        <div class="kb-attachment-icon text-white ${icon.bg}" style="${icon.style || ''}">
+                            <i class="bi ${icon.icon}"></i>
+                        </div>
+                        <div>
+                            <div class="fw-semibold">${attachment.fileName}</div>
+                            <small class="text-muted">${formatFileSize(attachment.fileSize)} &bull; ${formatDate(attachment.uploadedAt)}</small>
+                        </div>
+                    </div>
+                `;
+                listEl.appendChild(row);
+            });
+        }
+
+        function renderTask(task) {
+            taskData = task;
+            checklist = task.checklist || [];
+
+            backLink.href = `/task?id=${task.projectId}`;
+            document.getElementById('task-project-name').textContent = task.projectName || 'Project';
+            document.getElementById('task-title').textContent = task.title;
+            document.getElementById('task-description').textContent = task.description || 'No description provided.';
+
+            const badgesEl = document.getElementById('task-badges');
+            badgesEl.innerHTML = '';
+
+            (task.tags || []).forEach(tag => {
+                const badge = document.createElement('span');
+                badge.className = 'kb-project-tag rounded';
+                badge.style.setProperty('--tag-color', tag.color || '#6f42c1');
+                badge.innerHTML = `<i class="bi bi-tag"></i>${tag.name}`;
+                badgesEl.appendChild(badge);
+            });
+
+            const statusBadge = document.createElement('span');
+            statusBadge.className = 'kb-status-badge rounded';
+            statusBadge.innerHTML = `<i class="bi bi-kanban"></i> ${task.columnName || '—'}`;
+            badgesEl.appendChild(statusBadge);
+
+            if (task.priority) {
+                const priorityBadge = document.createElement('span');
+                priorityBadge.className = 'kb-priority-badge rounded';
+                priorityBadge.innerHTML = `<i class="bi bi-flag"></i> ${task.priority} Priority`;
+                badgesEl.appendChild(priorityBadge);
+            }
+
+            const assigneeEl = document.getElementById('task-assignee');
+            renderAssignees(task);
+
+            document.getElementById('task-start-date').innerHTML =
+                `<i class="bi bi-calendar-event me-2 text-muted"></i>${formatDate(task.startDate)}`;
+            document.getElementById('task-due-date').innerHTML =
+                `<i class="bi bi-calendar-check me-2 text-muted"></i>${formatDate(task.dueDate)}`;
+            document.getElementById('task-category').innerHTML =
+                `<i class="bi bi-tag me-2 text-muted"></i>${task.category || '—'}`;
+
+            renderChecklist();
+            renderAttachments(task.attachments || []);
+        }
+
+        async function loadTask() {
+            if (!projectId || !taskId) {
+                window.location.href = '/task';
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/projects/${projectId}/tasks/${taskId}`);
+                if (!response.ok) throw new Error('Task not found');
+
+                const task = await response.json();
+                loadingEl.classList.add('d-none');
+                contentEl.classList.remove('d-none');
+                renderTask(task);
+            } catch (error) {
+                console.error(error);
+                loadingEl.innerHTML = '<p class="text-danger">Unable to load task. <a href="/task">Return to board</a></p>';
+            }
+        }
+
+        addChecklistToggle?.addEventListener('click', () => {
+            addChecklistForm.classList.add('show');
+            newChecklistLabel.focus();
+        });
+
+        addChecklistCancel?.addEventListener('click', () => {
+            addChecklistForm.classList.remove('show');
+            newChecklistLabel.value = '';
+        });
+
+        addChecklistSubmit?.addEventListener('click', addChecklistItem);
+
+        newChecklistLabel?.addEventListener('keydown', event => {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                addChecklistItem();
+            } else if (event.key === 'Escape') {
+                addChecklistForm.classList.remove('show');
+                newChecklistLabel.value = '';
+            }
+        });
+
+        document.addEventListener('DOMContentLoaded', loadTask);
+    })();
+</script>
