@@ -5,7 +5,9 @@
 }
 
 <style>
-    .kb-topbar { background: #fff; }
+    .kb-topbar {
+        background: #fff;
+    }
 
     .kb-avatar-initials {
         width: 38px;
@@ -63,7 +65,9 @@
         font-size: 0.95rem;
     }
 
-    .kb-detail-card-body { padding: 1rem; }
+    .kb-detail-card-body {
+        padding: 1rem;
+    }
 
     .kb-info-label {
         font-size: 0.75rem;
@@ -79,8 +83,13 @@
         font-size: 0.95rem;
     }
 
-    .kb-detail-item { margin-bottom: 1.1rem; }
-    .kb-detail-item:last-child { margin-bottom: 0; }
+    .kb-detail-item {
+        margin-bottom: 1.1rem;
+    }
+
+    .kb-detail-item:last-child {
+        margin-bottom: 0;
+    }
 
     .kb-task-title {
         font-weight: 700;
@@ -136,7 +145,9 @@
         flex-shrink: 0;
     }
 
-    .kb-checklist-item:last-child { border-bottom: none; }
+    .kb-checklist-item:last-child {
+        border-bottom: none;
+    }
 
     .kb-checklist-item input {
         width: 1rem;
@@ -157,7 +168,9 @@
         margin-bottom: 0.65rem;
     }
 
-    .kb-attachment-row:last-child { margin-bottom: 0; }
+    .kb-attachment-row:last-child {
+        margin-bottom: 0;
+    }
 
     .kb-attachment-icon {
         width: 40px;
@@ -189,7 +202,9 @@
         padding: 0.5rem 0;
     }
 
-    .kb-assignee-picker { position: relative; }
+    .kb-assignee-picker {
+        position: relative;
+    }
 
     .kb-assignee-suggestions {
         position: absolute;
@@ -218,8 +233,15 @@
         text-align: left;
     }
 
-    .kb-assignee-suggestion:hover { background: #f3f6ff; }
-    .kb-assignee-suggestion .kb-avatar-initials { width: 30px; height: 30px; font-size: 0.68rem; }
+    .kb-assignee-suggestion:hover {
+        background: #f3f6ff;
+    }
+
+    .kb-assignee-suggestion .kb-avatar-initials {
+        width: 30px;
+        height: 30px;
+        font-size: 0.68rem;
+    }
 
     .kb-remove-assignee {
         margin-left: auto;
@@ -229,7 +251,9 @@
         padding: 0.25rem;
     }
 
-    .kb-remove-assignee:hover { color: #dc3545; }
+    .kb-remove-assignee:hover {
+        color: #dc3545;
+    }
 
     .kb-progress-bar {
         height: 8px;
@@ -251,7 +275,9 @@
         margin-bottom: 0.75rem;
     }
 
-    .kb-add-checklist-form.show { display: flex; }
+    .kb-add-checklist-form.show {
+        display: flex;
+    }
 </style>
 
 <div id="task-detail-root" data-project-id="@projectId" data-task-id="@taskId">
@@ -271,9 +297,13 @@
                     </a>
                     <div>
                         <div id="task-project-name" class="text-muted small"></div>
-                        <div id="task-title" class="kb-task-title"></div>
+                        <div id="task-detail-title" class="kb-task-title"></div>
                     </div>
                 </div>
+                <button type="button" class="btn btn-action" id="modify-task-button">
+                    <i class="bi bi-pencil-square"></i>
+                    Modify Task
+                </button>
             </div>
         </div>
 
@@ -300,9 +330,12 @@
                     </div>
                     <div class="kb-detail-card-body">
                         <div id="add-checklist-form" class="kb-add-checklist-form">
-                            <input type="text" id="new-checklist-label" class="form-control form-control-sm" placeholder="Checklist item label" maxlength="500">
-                            <button type="button" id="add-checklist-cancel" class="btn btn-sm px-4 btn-cancel">Cancel</button>
-                            <button type="button" id="add-checklist-submit" class="btn btn-sm px-4 btn-action">Add</button>
+                            <input type="text" id="new-checklist-label" class="form-control form-control-sm"
+                                   placeholder="Checklist item label" maxlength="500">
+                            <button type="button" id="add-checklist-cancel"
+                                    class="btn btn-sm px-4 btn-cancel">Cancel</button>
+                            <button type="button" id="add-checklist-submit"
+                                    class="btn btn-sm px-4 btn-action">Add</button>
                         </div>
 
                         <div class="kb-progress-bar mb-2">
@@ -378,9 +411,10 @@
                 </div>
             </div>
         </div>
-
     </div>
 </div>
+
+@await Html.PartialAsync("_TaskItemModal")
 
 <script>
     (function () {
@@ -402,11 +436,87 @@
         const newChecklistLabel = document.getElementById('new-checklist-label');
         const addChecklistSubmit = document.getElementById('add-checklist-submit');
         const addChecklistCancel = document.getElementById('add-checklist-cancel');
+        const modifyTaskButton = document.getElementById('modify-task-button');
+        const modifyTaskModalElement = document.getElementById('taskItemModal');
+        const modifyTaskModalLabel = document.getElementById('taskItemModalLabel');
+        const modifyTaskTitle = document.getElementById('task-title');
+        const modifyTaskDescription = document.getElementById('task-description');
+        const modifyTaskBoardType = document.getElementById('task-board-type');
+        const modifyTaskColumn = document.getElementById('task-column');
+        const modifyTaskPriority = document.getElementById('task-priority');
+        const modifyTaskStartDate = document.getElementById('task-start-date');
+        const modifyTaskDueDate = document.getElementById('task-due-date');
+        const modifyTaskCategory = document.getElementById('task-category');
+        const modifyTaskAssignees = document.getElementById('task-assigned-to');
+        const saveModifyTaskButton = document.getElementById('save-task-button');
 
         let taskData = null;
+        let projectData = null;
         let checklist = [];
         let projectCollaborators = [];
         let projectOwnerId = null;
+
+        function populateModifyTaskModal() {
+            if (!taskData) return;
+            modifyTaskTitle.value = taskData.title || '';
+            modifyTaskDescription.value = taskData.description || '';
+            modifyTaskBoardType.value = taskData.boardType || taskData.projectName || '';
+            modifyTaskPriority.value = taskData.priority || 'Medium';
+            modifyTaskStartDate.value = taskData.startDate ? String(taskData.startDate).slice(0, 10) : '';
+            modifyTaskDueDate.value = taskData.dueDate ? String(taskData.dueDate).slice(0, 10) : '';
+            modifyTaskColumn.innerHTML = '';
+            (projectData?.columns || []).forEach(column => modifyTaskColumn.add(new Option(column.name, column.id, false, String(column.id) === String(taskData.columnId))));
+            modifyTaskAssignees.innerHTML = '';
+            const assignedUserIds = new Set((taskData.assignees || []).map(assignee => String(assignee.userId)));
+            (projectData?.collaborators || []).forEach(collaborator => modifyTaskAssignees.add(new Option(
+                collaborator.fullName || collaborator.email || 'Collaborator',
+                collaborator.userId,
+                false,
+                assignedUserIds.has(String(collaborator.userId))
+            )));
+            modifyTaskCategory.innerHTML = '<option value="">No category</option>';
+            const currentTagId = taskData.tags?.[0]?.id;
+            (projectData?.tags || []).forEach(tag => modifyTaskCategory.add(new Option(tag.name, tag.id, false, String(tag.id) === String(currentTagId))));
+        }
+
+        function showModifyTaskModal() {
+            populateModifyTaskModal();
+            modifyTaskModalLabel.textContent = 'Modify Task';
+            saveModifyTaskButton.textContent = 'Submit';
+            new bootstrap.Modal(modifyTaskModalElement).show();
+        }
+
+        async function saveModifiedTask() {
+            if (!taskData) return;
+            const title = modifyTaskTitle.value.trim();
+            const description = modifyTaskDescription.value.trim();
+            const boardType = modifyTaskBoardType.value.trim();
+            const columnId = modifyTaskColumn.value;
+            const priority = modifyTaskPriority.value;
+            const startDate = modifyTaskStartDate.value;
+            const dueDate = modifyTaskDueDate.value;
+            const tagId = modifyTaskCategory.value || null;
+            const assignedUserIds = Array.from(modifyTaskAssignees.selectedOptions).map(option => option.value).filter(Boolean);
+            if (!title || !description || !columnId || !priority || !startDate || !dueDate) {
+                alert('Please complete all required task fields.');
+                return;
+            }
+            saveModifyTaskButton.disabled = true;
+            try {
+                const response = await fetch(`/api/projects/${projectId}/tasks/${taskId}`, {
+                    method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ title, description, boardType, columnId, priority, startDate, dueDate, tagId, assignedUserIds })
+                });
+                if (!response.ok) throw new Error(await response.text());
+                bootstrap.Modal.getInstance(modifyTaskModalElement)?.hide();
+                await loadTask();
+            } catch (error) {
+                TempData["ToastMessage"] = error.message || 'Unable to update the task.';
+                TempData["ToastType"] = "danger";
+            } finally {
+                saveModifyTaskButton.disabled = false;
+            }
+        }
 
         function formatDate(value) {
             if (!value) return '—';
@@ -481,33 +591,33 @@
                     : []);
             const colors = ['#2f6fed', '#6366f1', '#198754', '#dc3545', '#fd7e14'];
             assigneeEl.innerHTML = `
-                <div class="kb-assignee-picker mb-2">
-                    <div class="input-group input-group-sm">
-                        <span class="input-group-text bg-white"><i class="bi bi-search"></i></span>
-                        <input id="assignee-search" type="search" class="form-control" placeholder="Search project collaborators" autocomplete="off">
+                    <div class="kb-assignee-picker mb-2">
+                        <div class="input-group input-group-sm">
+                            <span class="input-group-text bg-white"><i class="bi bi-search"></i></span>
+                            <input id="assignee-search" type="search" class="form-control" placeholder="Search project collaborators" autocomplete="off">
+                        </div>
+                        <div id="assignee-suggestions" class="kb-assignee-suggestions d-none"></div>
                     </div>
-                    <div id="assignee-suggestions" class="kb-assignee-suggestions d-none"></div>
-                </div>
-                <div id="assigned-users-list"></div>`;
+                    <div id="assigned-users-list"></div>`;
 
             const assignedUsersList = document.getElementById('assigned-users-list');
             if (!assignees.length) {
                 assignedUsersList.innerHTML = '<div class="text-muted small">Invite a collaborator to this task.</div>';
             } else {
                 assignedUsersList.innerHTML = assignees.map((assignee, index) => `
-                <div class="kb-assignee-row">
-                    <div class="kb-avatar-initials text-white" style="background:${colors[index % colors.length]}">${getInitials(assignee.fullName)}</div>
-                    <div>
-                        <div class="fw-semibold">${escapeHtml(assignee.fullName)}</div>
-                        <small class="text-muted">${escapeHtml(assignee.email || '')}</small>
-                    </div>
-                    ${isProjectOwner(assignee.userId)
+                    <div class="kb-assignee-row">
+                        <div class="kb-avatar-initials text-white" style="background:${colors[index % colors.length]}">${getInitials(assignee.fullName)}</div>
+                        <div>
+                            <div class="fw-semibold">${escapeHtml(assignee.fullName)}</div>
+                            <small class="text-muted">${escapeHtml(assignee.email || '')}</small>
+                        </div>
+                        ${isProjectOwner(assignee.userId)
                         ? '<span class="text-muted small ms-auto">Owner</span>'
                         : `<button type="button" class="kb-remove-assignee" data-user-id="${assignee.userId}" title="Remove assignee" aria-label="Remove ${escapeHtml(assignee.fullName)}">
-                            <i class="bi bi-x-lg"></i>
-                           </button>`}
-                </div>
-                `).join('');
+                                <i class="bi bi-x-lg"></i>
+                               </button>`}
+                    </div>
+                    `).join('');
             }
 
             document.getElementById('assignee-search')?.addEventListener('input', event => {
@@ -541,8 +651,8 @@
                 item.type = 'button';
                 item.className = 'kb-assignee-suggestion';
                 item.innerHTML = `
-                    <span class="kb-avatar-initials text-white" style="background:${['#2f6fed', '#6366f1', '#198754', '#dc3545', '#fd7e14'][index % 5]}">${getInitials(collaborator.fullName || collaborator.email)}</span>
-                    <span><span class="d-block fw-semibold">${escapeHtml(collaborator.fullName || collaborator.email)}</span><small class="text-muted">${escapeHtml(collaborator.email || '')}</small></span>`;
+                        <span class="kb-avatar-initials text-white" style="background:${['#2f6fed', '#6366f1', '#198754', '#dc3545', '#fd7e14'][index % 5]}">${getInitials(collaborator.fullName || collaborator.email)}</span>
+                        <span><span class="d-block fw-semibold">${escapeHtml(collaborator.fullName || collaborator.email)}</span><small class="text-muted">${escapeHtml(collaborator.email || '')}</small></span>`;
                 item.addEventListener('click', () => addAssignee(collaborator));
                 suggestionsEl.appendChild(item);
             });
@@ -618,12 +728,12 @@
                 const row = document.createElement('label');
                 row.className = 'kb-checklist-item';
                 row.innerHTML = `
-                    <input class="form-check-input" type="checkbox" ${item.isCompleted ? 'checked' : ''} data-item-id="${item.id}">
-                    <div class="kb-checklist-item-content">
-                        <span class="${item.isCompleted ? 'text-decoration-line-through text-muted' : ''}">${item.label}</span>
-                        <small class="kb-checklist-date text-muted">${getChecklistDateLabel(item)}</small>
-                    </div>
-                `;
+                        <input class="form-check-input" type="checkbox" ${item.isCompleted ? 'checked' : ''} data-item-id="${item.id}">
+                        <div class="kb-checklist-item-content">
+                            <span class="${item.isCompleted ? 'text-decoration-line-through text-muted' : ''}">${item.label}</span>
+                            <small class="kb-checklist-date text-muted">${getChecklistDateLabel(item)}</small>
+                        </div>
+                    `;
 
                 const checkbox = row.querySelector('input');
                 const labelSpan = row.querySelector('.kb-checklist-item-content span');
@@ -708,16 +818,16 @@
                 const row = document.createElement('div');
                 row.className = 'kb-attachment-row';
                 row.innerHTML = `
-                    <div class="d-flex align-items-center gap-3">
-                        <div class="kb-attachment-icon text-white ${icon.bg}" style="${icon.style || ''}">
-                            <i class="bi ${icon.icon}"></i>
+                        <div class="d-flex align-items-center gap-3">
+                            <div class="kb-attachment-icon text-white ${icon.bg}" style="${icon.style || ''}">
+                                <i class="bi ${icon.icon}"></i>
+                            </div>
+                            <div>
+                                <div class="fw-semibold">${attachment.fileName}</div>
+                                <small class="text-muted">${formatFileSize(attachment.fileSize)} &bull; ${formatDate(attachment.uploadedAt)}</small>
+                            </div>
                         </div>
-                        <div>
-                            <div class="fw-semibold">${attachment.fileName}</div>
-                            <small class="text-muted">${formatFileSize(attachment.fileSize)} &bull; ${formatDate(attachment.uploadedAt)}</small>
-                        </div>
-                    </div>
-                `;
+                    `;
                 listEl.appendChild(row);
             });
         }
@@ -728,7 +838,7 @@
 
             backLink.href = `/task?id=${task.projectId}`;
             document.getElementById('task-project-name').textContent = task.projectName || 'Project';
-            document.getElementById('task-title').textContent = task.title;
+            document.getElementById('task-detail-title').textContent = task.title;
             document.getElementById('task-description').textContent = task.description || 'No description provided.';
 
             const badgesEl = document.getElementById('task-badges');
@@ -783,9 +893,10 @@
 
                 const task = await taskResponse.json();
                 if (projectResponse.ok) {
-                const project = await projectResponse.json();
-                projectCollaborators = project.collaborators || [];
-                projectOwnerId = project.userId || null;
+                    const project = await projectResponse.json();
+                    projectData = project;
+                    projectCollaborators = project.collaborators || [];
+                    projectOwnerId = project.userId || null;
                 }
                 loadingEl.classList.add('d-none');
                 contentEl.classList.remove('d-none');
@@ -819,5 +930,7 @@
         });
 
         document.addEventListener('DOMContentLoaded', loadTask);
+        modifyTaskButton?.addEventListener('click', showModifyTaskModal);
+        saveModifyTaskButton?.addEventListener('click', saveModifiedTask);
     })();
 </script>

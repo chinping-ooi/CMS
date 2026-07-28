@@ -1,9 +1,6 @@
 @using System.Text.Encodings.Web
 @model IEnumerable<CMS.Models.Customer>
 
-@* @section Styles {
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/fomantic-ui/2.9.2/semantic.min.css" />
-} *@
 @{
     ViewData["Title"] = "Customer Directory";
 }
@@ -63,13 +60,11 @@
                             <th scope="col">Company Name</th>
                             <th scope="col">Email</th>
                             <th scope="col">Phone</th>
-                            <th scope="col">Status</th>
                             <th scope="col" class="text-end pe-4">Actions</th>
                         </tr>
                     </thead>
                     <tbody id="customerTableBody">
-                        @if (Model != null && Model.Any())
-                        {
+                        @if (Model != null && Model.Any()){
                             int row = 1;
                             @foreach (var item in Model)
                             {
@@ -102,8 +97,7 @@
                                 row++;
                             }
                         }
-                        else
-                        {
+                        else {
                             <tr id="noDataRow">
                                 <td colspan="6" class="text-center py-5 text-muted">
                                     <i class="fa fa-people fs-1 d-block text-secondary mb-2"></i>
@@ -111,6 +105,12 @@
                                 </td>
                             </tr>
                         }
+                        <!-- <tr id="loadingRow">
+                            <td colspan="5" class="text-center py-5 text-muted">
+                                <i class="fa fa-spinner fa-spin fs-3 d-block mb-2"></i>
+                                Loading customers...
+                            </td>
+                        </tr> -->
                     </tbody>
                 </table>
             </div>
@@ -310,6 +310,77 @@
 @section Scripts {
     @Html.AntiForgeryToken()
     <script>
+        $(document).ready(function () {
+            // loadCustomers();
+        });
+
+        function loadCustomers() {
+            $.ajax({
+                url: "/api/customer",
+                type: "GET",
+                success: function (customers) {
+                    let tbody = $("#customerTableBody");
+                    tbody.empty();
+                    if (customers.length === 0) {
+                        tbody.append(`
+                            <tr id="noDataRow">
+                                <td colspan="5" class="text-center py-5 text-muted">
+                                    <i class="fa fa-people fs-1 d-block text-secondary mb-2"></i>
+                                    No customers found. Click "Add Customer" to create one.
+                                </td>
+                            </tr>
+                        `);
+                        return;
+                    }
+                    $.each(customers, function (index, item) {
+                        tbody.append(`
+                            <tr id="row-${item.customer_Id}">
+                                <td class="ps-4 fw-semibold text-secondary">
+                                    #${index + 1}
+                                </td>
+                                <td>
+                                    <span class="fw-bold text-dark customer-name">
+                                        ${item.name}
+                                    </span>
+                                </td>
+                                <td>
+                                    <span class="text-muted">
+                                        ${item.email ?? "-"}
+                                    </span>
+                                </td>
+                                <td>
+                                    <span class="text-muted">
+                                        ${item.phone ?? "-"}
+                                    </span>
+                                </td>
+                                <td class="text-end pe-4">
+                                    <button class="btn btn-sm btn-action fw-semibold"
+                                            onclick="openEditModal(${item.customer_Id})">
+                                        <i class="fa-regular fa-pen-to-square"></i>
+                                    </button>
+                                    <button type="button"
+                                            class="btn btn-sm btn-delete fw-semibold"
+                                            onclick="deleteCustomer(${item.customer_Id})">
+                                        <i class="fa-solid fa-trash-can"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                        `);
+                    });
+                },
+                error: function (xhr) {
+                    $("#customerTableBody").html(`
+                        <tr>
+                            <td colspan="5" class="text-center py-5 text-danger">
+                                Failed to load customers.
+                            </td>
+                        </tr>
+                    `);
+                    console.error(xhr.responseText);
+                }
+            });
+        }
+            
         let editModal;
 
         $(document).ready(function () {
@@ -369,7 +440,7 @@
             if (!id) return;
 
             $.ajax({
-                url: `/api/customers/${id}`,
+                url: `/api/customer/${id}`,
                 type: 'GET',
                 dataType: 'json',
                 success: function (customer) {

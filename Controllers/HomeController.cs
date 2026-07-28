@@ -31,35 +31,37 @@ public class HomeController : Controller
         return View();
     }
 
-    [HttpGet("/customer")]
+    [Authorize]
+    [HttpGet("/customer", Name = "customer")]
     public async Task<IActionResult> Customer()
     {
-        try
-        {
-            await using var connection = await _context.CreateOpenConnectionAsync();
-            var customers = await connection.QueryAsync<Customer>("SELECT * FROM customer");
-            return View(customers);
-        }
-        catch (Exception ex)
-        {
-            ViewBag.DbError = ex.Message;
-            return View(Enumerable.Empty<Customer>());
-        }
+        await using var connection = await _context.CreateOpenConnectionAsync();
+        var sql = "SELECT customer_id, name, email, phone, address, city, state, postal_code, country, record_typ, customer_status, updated_by, updated_date FROM customer";
+        var customer = await connection.QueryAsync<Customer>(sql);
+        return View(customer);
     }
+    
+    // [Authorize]
+    // [HttpGet("/customer/rows")]
+    // public async Task<IActionResult> CustomerRows()
+    // {
+    //     var customers = await GetCustomers();
+
+    //     return PartialView("_CustomerRows", customers);
+    // }
 
     [AllowAnonymous]
     [HttpGet("/not-found")]
     public IActionResult NotFoundPage()
     {
-        ViewData["Title"] = "Page Not Found";
         return View();
     }
 
-    [AllowAnonymous]
+    [AllowAnonymous]    
+    [HttpGet("/error")]
     [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
-    public IActionResult Error()    {
-        return View(
-            new ErrorViewModel { RequestId = Activity.Current?.Id ?? HttpContext.TraceIdentifier }
-        );
+    public IActionResult Error()
+    {
+        return View(new ErrorViewModel { RequestId = Activity.Current?.Id ?? HttpContext.TraceIdentifier });
     }
 }

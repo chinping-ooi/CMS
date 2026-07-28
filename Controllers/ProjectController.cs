@@ -127,8 +127,6 @@ public class ProjectController : Controller
 
         try
         {
-            Console.WriteLine($"Starting project insert: {projectToSave.Name} ({projectToSave.Id})");
-
             const string insertProjectSql = "INSERT INTO project (id, user_id, name, description, created_at, updated_at) VALUES (@Id, @UserId, @Name, @Description, @CreatedAt, @UpdatedAt)";
             await connection.ExecuteAsync(insertProjectSql, projectToSave, transaction);
 

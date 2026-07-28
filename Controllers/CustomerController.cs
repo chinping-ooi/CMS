@@ -2,6 +2,7 @@ using CMS.Data;
 using CMS.Models;
 using Dapper;
 using Microsoft.AspNetCore.Mvc;
+// using Microsoft.AspNetCore.Authorization;
 
 namespace CMS.Controllers;
 
@@ -14,15 +15,19 @@ public class CustomerController : Controller
         _context = context;
     }
 
-    [HttpGet]
     public async Task<IActionResult> GetCustomer(int id)
     {
         await using var connection = await _context.CreateOpenConnectionAsync();
-        var customer = await connection.QuerySingleOrDefaultAsync<Customer>(
-            "SELECT * FROM customer WHERE customer_id = @Id", new { Id = id });
+
+        var sql_customer = "SELECT * FROM customer WHERE customer_id = @Id";
+        var customer = await connection.QuerySingleOrDefaultAsync<Customer>(sql_customer, new { Id = id });
 
         if (customer == null)
-            return NotFound();
+        {
+            TempData["ToastMessage"] = "No customer found with the given ID.";
+            TempData["ToastType"] = "danger";
+            return Redirect("/customer");
+        }
 
         return Json(customer);
     }

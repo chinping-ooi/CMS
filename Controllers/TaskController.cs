@@ -17,7 +17,7 @@ public class TaskController : Controller
 
     [HttpGet("/task")]
     public async Task<IActionResult> Index(Guid? id)
-    {
+    { 
         await using var connection = await _context.CreateOpenConnectionAsync();
 
         const string projectByIdSql = "SELECT id, user_id AS UserId, name, description, created_at AS CreatedAt, updated_at AS UpdatedAt FROM project WHERE id = @Id";

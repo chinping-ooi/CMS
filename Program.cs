@@ -59,9 +59,7 @@ builder.Services.AddAuthorization(options =>
 {
     // All application routes require a valid JWT unless explicitly marked
     // with [AllowAnonymous], such as the login page and auth endpoints.
-    options.FallbackPolicy = new AuthorizationPolicyBuilder()
-        .RequireAuthenticatedUser()
-        .Build();
+    options.FallbackPolicy = new AuthorizationPolicyBuilder().RequireAuthenticatedUser().Build();
 });
 
 builder.Services.AddHttpClient();
@@ -312,10 +310,13 @@ using (var scope = app.Services.CreateScope())
         """);
 }
 
+app.UseExceptionHandler("/error");
+app.UseStatusCodePagesWithReExecute("/not-found");
+
 if (!app.Environment.IsDevelopment())
 {
-    app.UseExceptionHandler("/Home/Error");
-    app.UseStatusCodePagesWithReExecute("/Home/NotFoundPage");
+    // app.UseExceptionHandler("/not-found");
+    // app.UseStatusCodePagesWithReExecute("/not-found");
     app.UseHsts();
 }
 

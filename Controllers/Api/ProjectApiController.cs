@@ -20,6 +20,7 @@ public class ProjectApiController : ControllerBase
         _context = context;
     }
 
+    // GET: api/projects
     [HttpGet]
     public async Task<ActionResult<IEnumerable<ProjectApiResponse>>> GetAll()
     {
@@ -31,6 +32,7 @@ public class ProjectApiController : ControllerBase
         return Ok(projects.Select(MapProject).ToList());
     }
 
+    // GET: api/projects/{id}
     [HttpGet("{id:guid}")]
     public async Task<ActionResult<ProjectApiResponse>> Get(Guid id)
     {
@@ -172,6 +174,7 @@ public class ProjectApiController : ControllerBase
         return Ok(MapProject(project));
     }
 
+    // POST: api/projects
     [HttpPost]
     public async Task<ActionResult<ProjectApiResponse>> Create(Project project)
     {
@@ -244,6 +247,7 @@ public class ProjectApiController : ControllerBase
         return CreatedAtAction(nameof(Get), new { id = project.Id }, MapProject(project));
     }
 
+    // POST: api/projects/{id}/tasks
     [HttpPost("{id:guid}/tasks")]
     public async Task<ActionResult<TaskItemApiResponse>> CreateTask(Guid id, CreateTaskItemRequest request)
     {
@@ -823,6 +827,70 @@ public class ProjectApiController : ControllerBase
         return NoContent();
     }
 
+    [HttpPatch("{projectId:guid}/tasks/{taskId:guid}")]
+    public async Task<IActionResult> UpdateTaskDetails(Guid projectId, Guid taskId, UpdateTaskDetailsRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(request.Title) || string.IsNullOrWhiteSpace(request.Description)
+            || request.ColumnId == Guid.Empty || request.StartDate == null || request.DueDate == null
+            || string.IsNullOrWhiteSpace(request.Priority))
+        {
+            return BadRequest("Title, description, column, dates, and priority are required.");
+        }
+
+        await using var connection = await _context.CreateOpenConnectionAsync();
+        await using var transaction = await connection.BeginTransactionAsync();
+        var updatedAt = DateTime.UtcNow;
+        var assigneeIds = (request.AssignedUserIds ?? [])
+            .Where(userId => userId != Guid.Empty)
+            .Distinct()
+            .ToList();
+        const string updateTaskSql = @"
+            UPDATE task_item
+            SET title = @Title, description = @Description, column_id = @ColumnId,
+                board_type = @BoardType, assigned_user_id = @AssignedUserId,
+                start_date = @StartDate, due_date = @DueDate, priority = @Priority,
+                category = @Category, updated_at = @UpdatedAt
+            WHERE id = @TaskId AND project_id = @ProjectId";
+        var rows = await connection.ExecuteAsync(updateTaskSql, new
+        {
+            Title = request.Title.Trim(),
+            Description = request.Description.Trim(),
+            BoardType = string.IsNullOrWhiteSpace(request.BoardType) ? null : request.BoardType.Trim(),
+            request.ColumnId,
+            AssignedUserId = assigneeIds.FirstOrDefault() == Guid.Empty ? null : (Guid?)assigneeIds.First(),
+            request.StartDate,
+            request.DueDate,
+            Priority = request.Priority.Trim(),
+            Category = request.TagId?.ToString(),
+            UpdatedAt = updatedAt,
+            TaskId = taskId,
+            ProjectId = projectId,
+        }, transaction);
+        if (rows == 0)
+        {
+            return NotFound();
+        }
+
+        await connection.ExecuteAsync("DELETE FROM task_assignee WHERE task_id = @TaskId", new { TaskId = taskId }, transaction);
+        foreach (var userId in assigneeIds)
+        {
+            await connection.ExecuteAsync(
+                "INSERT INTO task_assignee (task_id, user_id, assigned_at) VALUES (@TaskId, @UserId, @AssignedAt)",
+                new { TaskId = taskId, UserId = userId, AssignedAt = updatedAt }, transaction);
+        }
+
+        await connection.ExecuteAsync("DELETE FROM task_item_tag WHERE task_id = @TaskId", new { TaskId = taskId }, transaction);
+        if (request.TagId.HasValue)
+        {
+            await connection.ExecuteAsync(
+                "INSERT INTO task_item_tag (task_id, tag_id) VALUES (@TaskId, @TagId)",
+                new { TaskId = taskId, TagId = request.TagId.Value }, transaction);
+        }
+
+        await transaction.CommitAsync();
+        return NoContent();
+    }
+
     [HttpDelete("{projectId:guid}/tasks/{taskId:guid}")]
     public async Task<IActionResult> DeleteTask(Guid projectId, Guid taskId)
     {
@@ -1148,6 +1216,20 @@ public sealed class CreateTaskItemRequest
     public string Priority { get; set; } = string.Empty;
     public Guid? TagId { get; set; }
 }
+
+public sealed class UpdateTaskDetailsRequest
+{
+    public string? Title { get; set; }
+    public string? Description { get; set; }
+    public string? BoardType { get; set; }
+    public Guid ColumnId { get; set; }
+    public List<Guid>? AssignedUserIds { get; set; }
+    public DateTime? StartDate { get; set; }
+    public DateTime? DueDate { get; set; }
+    public string? Priority { get; set; }
+    public Guid? TagId { get; set; }
+}
+
 public class TaskItemApiResponse
 {
     public Guid Id { get; set; }
