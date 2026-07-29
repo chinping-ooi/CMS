@@ -60,13 +60,13 @@
               "target": "Package",
               "version": "[10.0.3, )"
             },
-            "Npgsql": {
+            "Microsoft.Data.SqlClient": {
               "target": "Package",
-              "version": "[10.0.3, )"
+              "version": "[7.0.2, )"
             },
             "System.IdentityModel.Tokens.Jwt": {
               "target": "Package",
-              "version": "[8.6.1, )"
+              "version": "[8.16.0, )"
             }
           },
           "imports": [

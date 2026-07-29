@@ -41,11 +41,9 @@ public class AuthApiController : ControllerBase
         await using var connection = await _context.CreateOpenConnectionAsync();
 
         const string sql = @"
-            SELECT id, full_name AS FullName, email, password_hash AS PasswordHash,
-                   password_salt AS PasswordSalt, created_at AS CreatedAt
-            FROM users
-            WHERE LOWER(email) = LOWER(@Email)
-            LIMIT 1";
+            SELECT TOP 1 USER_ID AS Id, FULL_NAME AS FullName, EMAIL,
+                   PASSWORD_HASH AS PasswordHash, PASSWORD_SALT AS PasswordSalt, CREATED_DATE AS CreatedAt
+            FROM MM_USER WHERE LOWER(EMAIL) = LOWER(@Email);";
 
         var user = await connection.QuerySingleOrDefaultAsync<User>(sql, new { Email = request.Email.Trim() });
         if (user == null || !_passwordHasher.Verify(request.Password, user.PasswordHash ?? string.Empty, user.PasswordSalt ?? string.Empty))
@@ -102,7 +100,7 @@ public class AuthApiController : ControllerBase
 
         await using var connection = await _context.CreateOpenConnectionAsync();
 
-        const string emailExistsSql = "SELECT COUNT(1) FROM users WHERE LOWER(email) = LOWER(@Email)";
+        const string emailExistsSql = "SELECT COUNT(1) FROM MM_USER WHERE LOWER(EMAIL) = LOWER(@Email);";
         var emailExists = await connection.ExecuteScalarAsync<int>(emailExistsSql, new { user.Email }) > 0;
         if (emailExists)
         {
@@ -110,8 +108,8 @@ public class AuthApiController : ControllerBase
         }
 
         const string insertSql = @"
-            INSERT INTO users (id, full_name, email, password_hash, password_salt, created_at)
-            VALUES (@Id, @FullName, @Email, @PasswordHash, @PasswordSalt, @CreatedAt)";
+            INSERT INTO MM_USER (USER_ID, FULL_NAME, EMAIL, PASSWORD_HASH, PASSWORD_SALT, RECORD_TYP, CREATED_BY, CREATED_DATE, CREATED_LOC)
+            VALUES (@Id, @FullName, @Email, @PasswordHash, @PasswordSalt, 1, 'SYSTEM', @CreatedAt, '127.0.0.1');";
 
         await connection.ExecuteAsync(insertSql, user);
 
@@ -139,6 +137,31 @@ public class AuthApiController : ControllerBase
         return NoContent();
     }
 
+    [HttpGet("me")]
+    [Authorize]
+    public async Task<ActionResult<AuthUserResponse>> Me()
+    {
+        var idClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+        if (!Guid.TryParse(idClaim, out var userId))
+        {
+            return Unauthorized();
+        }
+
+        await using var connection = await _context.CreateOpenConnectionAsync();
+
+        const string sql = @"
+            SELECT USER_ID AS Id, FULL_NAME AS FullName, EMAIL
+            FROM MM_USER WHERE USER_ID = @UserId";
+
+        var user = await connection.QuerySingleOrDefaultAsync<AuthUserResponse>(sql, new { UserId = userId });
+        if (user == null)
+        {
+            return NotFound();
+        }
+
+        return Ok(user);
+    }
+
     private void SetAuthCookie(string token)
     {
         Response.Cookies.Append(
@@ -149,7 +172,7 @@ public class AuthApiController : ControllerBase
                 HttpOnly = true,
                 Secure = Request.IsHttps,
                 SameSite = SameSiteMode.Lax,
-                Expires = DateTimeOffset.UtcNow.AddMinutes(_jwtSettings.ExpiresMinutes),
+                Expires = DateTime.UtcNow.AddMinutes(_jwtSettings.ExpiresMinutes),
             });
     }
 }

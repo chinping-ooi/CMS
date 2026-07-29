@@ -4,7 +4,7 @@ using Dapper;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
-using Npgsql;
+// using Npgsql;
 using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -80,234 +80,517 @@ using (var scope = app.Services.CreateScope())
 {
     var dapperContext = scope.ServiceProvider.GetRequiredService<DapperContext>();
     await using var connection = await dapperContext.CreateOpenConnectionAsync();
-    await connection.ExecuteAsync(
-        """
-        CREATE TABLE IF NOT EXISTS project (
-            id uuid NOT NULL PRIMARY KEY,
-            name character varying(255) NOT NULL,
-            description text NULL,
-            created_at timestamp with time zone NOT NULL,
-            updated_at timestamp with time zone NOT NULL
-        );
+    await connection.ExecuteAsync("""
+        IF OBJECT_ID('dbo.MM_USER', 'U') IS NULL
+        BEGIN
+            CREATE TABLE dbo.MM_USER
+            (
+                USER_ID UNIQUEIDENTIFIER NOT NULL,
+                FULL_NAME NVARCHAR(255) NOT NULL,
+                EMAIL NVARCHAR(255) NOT NULL,
+                PASSWORD_HASH NVARCHAR(MAX) NULL,
+                PASSWORD_SALT NVARCHAR(MAX) NULL,
 
-        CREATE TABLE IF NOT EXISTS users (
-            id uuid NOT NULL PRIMARY KEY,
-            full_name character varying(255) NOT NULL,
-            email character varying(255) NOT NULL,
-            password_hash text NULL,
-            password_salt text NULL,
-            created_at timestamp with time zone NOT NULL
-        );
+                STATUS INT NOT NULL DEFAULT 1,
+                RECORD_TYP INT NOT NULL DEFAULT 1,
+                CREATED_BY NVARCHAR(50) NOT NULL DEFAULT 'SYSTEM',
+                CREATED_DATE DATETIME NOT NULL DEFAULT SYSDATETIME(),
+                CREATED_LOC NVARCHAR(15) NULL,
+                UPDATED_BY NVARCHAR(50) NULL,
+                UPDATED_DATE DATETIME NULL,
+                UPDATED_LOC NVARCHAR(15) NULL,
 
-        CREATE TABLE IF NOT EXISTS project_column (
-            id uuid NOT NULL PRIMARY KEY,
-            project_id uuid NOT NULL,
-            name character varying(100) NOT NULL,
-            position integer NOT NULL,
-            created_at timestamp with time zone NOT NULL,
-            CONSTRAINT fk_project_column_project FOREIGN KEY (project_id)
-                REFERENCES project (id) ON DELETE CASCADE
-        );
+                CONSTRAINT PK_MM_USER_USER_ID
+                    PRIMARY KEY (USER_ID)
+            );
+        END;
 
-        CREATE TABLE IF NOT EXISTS project_tag (
-            id uuid NOT NULL PRIMARY KEY,
-            project_id uuid NOT NULL,
-            name character varying(100) NOT NULL,
-            color text NULL,
-            created_at timestamp with time zone NOT NULL,
-            CONSTRAINT fk_project_tag_project FOREIGN KEY (project_id)
-                REFERENCES project (id) ON DELETE CASCADE
-        );
+        IF NOT EXISTS
+        (
+            SELECT 1
+            FROM sys.indexes
+            WHERE name = 'UIX_MM_USER_EMAIL'
+            AND object_id = OBJECT_ID('dbo.MM_USER')
+        )
+        BEGIN
+            CREATE UNIQUE INDEX UIX_MM_USER_EMAIL
+            ON dbo.MM_USER(EMAIL);
+        END;
 
-        CREATE TABLE IF NOT EXISTS project_collaborator (
-            project_id uuid NOT NULL,
-            user_id uuid NOT NULL,
-            role text NOT NULL,
-            joined_at timestamp with time zone NOT NULL,
-            CONSTRAINT pk_project_collaborator PRIMARY KEY (project_id, user_id),
-            CONSTRAINT fk_project_collaborator_project FOREIGN KEY (project_id)
-                REFERENCES project (id) ON DELETE CASCADE,
-            CONSTRAINT fk_project_collaborator_user FOREIGN KEY (user_id)
-                REFERENCES users (id) ON DELETE CASCADE
-        );
+        IF OBJECT_ID('dbo.MM_PROJECT', 'U') IS NULL
+        BEGIN
+            CREATE TABLE dbo.MM_PROJECT
+            (
+                PROJECT_ID UNIQUEIDENTIFIER NOT NULL,
+                USER_ID UNIQUEIDENTIFIER NOT NULL,
+                NAME NVARCHAR(255) NOT NULL,
+                DESCRIPTION NVARCHAR(MAX) NULL,
 
-        CREATE TABLE IF NOT EXISTS task_item (
-            id uuid NOT NULL PRIMARY KEY,
-            title character varying(255) NOT NULL,
-            description text NULL,
-            board_type text NULL,
-            project_id uuid NOT NULL,
-            column_id uuid NOT NULL,
-            assigned_user_id uuid NULL,
-            start_date timestamp with time zone NULL,
-            due_date timestamp with time zone NULL,
-            priority text NOT NULL,
-            category text NULL,
-            created_at timestamp with time zone NOT NULL,
-            updated_at timestamp with time zone NOT NULL,
-            CONSTRAINT fk_task_item_project FOREIGN KEY (project_id)
-                REFERENCES project (id) ON DELETE CASCADE,
-            CONSTRAINT fk_task_item_column FOREIGN KEY (column_id)
-                REFERENCES project_column (id) ON DELETE CASCADE,
-            CONSTRAINT fk_task_item_user FOREIGN KEY (assigned_user_id)
-                REFERENCES users (id)
-        );
+                STATUS INT NOT NULL DEFAULT 1,
+                RECORD_TYP INT NOT NULL DEFAULT 1,
+                CREATED_BY NVARCHAR(50) NOT NULL DEFAULT 'SYSTEM',
+                CREATED_DATE DATETIME NOT NULL DEFAULT SYSDATETIME(),
+                CREATED_LOC NVARCHAR(15) NULL,
+                UPDATED_BY NVARCHAR(50) NULL,
+                UPDATED_DATE DATETIME NULL,
+                UPDATED_LOC NVARCHAR(15) NULL,
 
-        -- Ensure priority column is text if previously integer
-        -- and add new optional columns when upgrading an existing schema.
-        ALTER TABLE task_item
-            ADD COLUMN IF NOT EXISTS board_type text NULL;
-        ALTER TABLE task_item
-            ADD COLUMN IF NOT EXISTS start_date timestamp with time zone NULL;
-        ALTER TABLE task_item
-            ADD COLUMN IF NOT EXISTS category text NULL;
-        -- Attempt to convert existing priority column to text (harmless if already text)
-        ALTER TABLE task_item
-            ALTER COLUMN priority TYPE text USING priority::text;
+                CONSTRAINT PK_MM_PROJECT_PROJECT_ID
+                    PRIMARY KEY (PROJECT_ID),
 
-        CREATE TABLE IF NOT EXISTS task_item_tag (
-            task_id uuid NOT NULL,
-            tag_id uuid NOT NULL,
-            CONSTRAINT pk_task_item_tag PRIMARY KEY (task_id, tag_id),
-            CONSTRAINT fk_task_item_tag_task FOREIGN KEY (task_id)
-                REFERENCES task_item (id) ON DELETE CASCADE,
-            CONSTRAINT fk_task_item_tag_tag FOREIGN KEY (tag_id)
-                REFERENCES project_tag (id) ON DELETE CASCADE
-        );
+                CONSTRAINT FK_MM_PROJECT_MM_USER
+                    FOREIGN KEY (USER_ID)
+                    REFERENCES dbo.MM_USER(USER_ID)
+            );
+        END;
 
-        CREATE TABLE IF NOT EXISTS task_attachment (
-            id uuid NOT NULL PRIMARY KEY,
-            task_id uuid NOT NULL,
-            file_name character varying(1024) NOT NULL,
-            file_path text NOT NULL,
-            file_type character varying(255) NULL,
-            file_size bigint NOT NULL,
-            uploaded_at timestamp with time zone NOT NULL,
-            CONSTRAINT fk_task_attachment_task FOREIGN KEY (task_id)
-                REFERENCES task_item (id) ON DELETE CASCADE
-        );
+        IF OBJECT_ID('dbo.DE_PROJECT_COLUMN', 'U') IS NULL
+        BEGIN
+            CREATE TABLE dbo.DE_PROJECT_COLUMN
+            (
+                PROJECT_COLUMN_ID UNIQUEIDENTIFIER NOT NULL,
+                PROJECT_ID UNIQUEIDENTIFIER NOT NULL,
+                NAME NVARCHAR(100) NOT NULL,
+                POSITION INT NOT NULL,
 
-        CREATE TABLE IF NOT EXISTS task_checklist_item (
-            id uuid NOT NULL PRIMARY KEY,
-            task_id uuid NOT NULL,
-            label character varying(500) NOT NULL,
-            is_completed boolean NOT NULL DEFAULT false,
-            created_at timestamp with time zone NOT NULL,
-            updated_at timestamp with time zone NOT NULL,
-            CONSTRAINT fk_task_checklist_item_task FOREIGN KEY (task_id)
-                REFERENCES task_item (id) ON DELETE CASCADE
-        );
+                STATUS INT NOT NULL DEFAULT 1,
+                RECORD_TYP INT NOT NULL DEFAULT 1,
+                CREATED_BY NVARCHAR(50) NOT NULL DEFAULT 'SYSTEM',
+                CREATED_DATE DATETIME NOT NULL DEFAULT SYSDATETIME(),
+                CREATED_LOC NVARCHAR(15) NULL,
+                UPDATED_BY NVARCHAR(50) NULL,
+                UPDATED_DATE DATETIME NULL,
+                UPDATED_LOC NVARCHAR(15) NULL,
 
-        CREATE TABLE IF NOT EXISTS task_assignee (
-            task_id uuid NOT NULL,
-            user_id uuid NOT NULL,
-            assigned_at timestamp with time zone NOT NULL,
-            CONSTRAINT pk_task_assignee PRIMARY KEY (task_id, user_id),
-            CONSTRAINT fk_task_assignee_task FOREIGN KEY (task_id)
-                REFERENCES task_item (id) ON DELETE CASCADE,
-            CONSTRAINT fk_task_assignee_user FOREIGN KEY (user_id)
-                REFERENCES users (id) ON DELETE CASCADE
-        );
-        """);
+                CONSTRAINT PK_DE_PROJECT_COLUMN_COLUMN_ID
+                    PRIMARY KEY (PROJECT_COLUMN_ID),
 
-    await connection.ExecuteAsync("ALTER TABLE task_item ADD COLUMN IF NOT EXISTS board_type text NULL;");
+                CONSTRAINT FK_DE_PROJECT_COLUMN_MM_PROJECT
+                    FOREIGN KEY (PROJECT_ID)
+                    REFERENCES dbo.MM_PROJECT(PROJECT_ID)
+            );
+        END;
 
-    await connection.ExecuteAsync(
-        """
-        ALTER TABLE users ADD COLUMN IF NOT EXISTS password_hash text NULL;
-        ALTER TABLE users ADD COLUMN IF NOT EXISTS password_salt text NULL;
-        ALTER TABLE project ADD COLUMN IF NOT EXISTS user_id uuid NULL;
-        CREATE UNIQUE INDEX IF NOT EXISTS ix_users_email_lower ON users (LOWER(email));
-        """);
+        IF OBJECT_ID('dbo.MM_PROJECT_TAG', 'U') IS NULL
+        BEGIN
+            CREATE TABLE dbo.MM_PROJECT_TAG
+            (
+                PROJECT_TAG_ID UNIQUEIDENTIFIER NOT NULL,
+                PROJECT_ID UNIQUEIDENTIFIER NOT NULL,
+                NAME NVARCHAR(100) NOT NULL,
+                COLOR NVARCHAR(MAX) NULL,
 
-    await connection.ExecuteAsync(
-        """
-        INSERT INTO task_assignee (task_id, user_id, assigned_at)
-        SELECT ti.id, ti.assigned_user_id, ti.created_at
-        FROM task_item ti
-        WHERE ti.assigned_user_id IS NOT NULL
-        ON CONFLICT (task_id, user_id) DO NOTHING;
-        """);
+                STATUS INT NOT NULL DEFAULT 1,
+                RECORD_TYP INT NOT NULL DEFAULT 1,
+                CREATED_BY NVARCHAR(50) NOT NULL DEFAULT 'SYSTEM',
+                CREATED_DATE DATETIME NOT NULL DEFAULT SYSDATETIME(),
+                CREATED_LOC NVARCHAR(15) NULL,
+                UPDATED_BY NVARCHAR(50) NULL,
+                UPDATED_DATE DATETIME NULL,
+                UPDATED_LOC NVARCHAR(15) NULL,
+
+                CONSTRAINT PK_MM_PROJECT_TAG_TAG_ID
+                    PRIMARY KEY (PROJECT_TAG_ID),
+
+                CONSTRAINT FK_MM_PROJECT_TAG_MM_PROJECT
+                    FOREIGN KEY (PROJECT_ID)
+                    REFERENCES dbo.MM_PROJECT(PROJECT_ID)
+            );
+        END;
+
+        IF OBJECT_ID('dbo.DE_PROJECT_COLLABORATOR', 'U') IS NULL
+        BEGIN
+            CREATE TABLE dbo.DE_PROJECT_COLLABORATOR
+            (
+                PROJECT_ID UNIQUEIDENTIFIER NOT NULL,
+                USER_ID UNIQUEIDENTIFIER NOT NULL,
+                ROLE NVARCHAR(50) NOT NULL,
+
+                STATUS INT NOT NULL DEFAULT 1,
+                RECORD_TYP INT NOT NULL DEFAULT 1,
+                CREATED_BY NVARCHAR(50) NOT NULL DEFAULT 'SYSTEM',
+                CREATED_DATE DATETIME NOT NULL DEFAULT SYSDATETIME(),
+                CREATED_LOC NVARCHAR(15) NULL,
+                UPDATED_BY NVARCHAR(50) NULL,
+                UPDATED_DATE DATETIME NULL,
+                UPDATED_LOC NVARCHAR(15) NULL,
+
+                CONSTRAINT PK_DE_PROJECT_COLLABORATOR
+                    PRIMARY KEY (PROJECT_ID, USER_ID),
+
+                CONSTRAINT FK_DE_PROJECT_COLLABORATOR_MM_PROJECT
+                    FOREIGN KEY (PROJECT_ID)
+                    REFERENCES dbo.MM_PROJECT(PROJECT_ID),
+
+                CONSTRAINT FK_DE_PROJECT_COLLABORATOR_MM_USER
+                    FOREIGN KEY (USER_ID)
+                    REFERENCES dbo.MM_USER(USER_ID)
+            );
+        END;
+
+        IF OBJECT_ID('dbo.DE_TASK_ITEM', 'U') IS NULL
+        BEGIN
+            CREATE TABLE dbo.DE_TASK_ITEM
+            (
+                TASK_ITEM_ID UNIQUEIDENTIFIER NOT NULL,
+                TITLE NVARCHAR(255) NOT NULL,
+                DESCRIPTION NVARCHAR(MAX) NULL,
+                BOARD_TYPE NVARCHAR(50) NULL,
+
+                PROJECT_ID UNIQUEIDENTIFIER NOT NULL,
+                PROJECT_COLUMN_ID UNIQUEIDENTIFIER NOT NULL,
+                ASSIGNED_USER_ID UNIQUEIDENTIFIER NULL,
+
+                START_DATE DATETIME NULL,
+                DUE_DATE DATETIME NULL,
+
+                PRIORITY NVARCHAR(50) NOT NULL,
+                CATEGORY NVARCHAR(100) NULL,
+
+                STATUS INT NOT NULL DEFAULT 1,
+                RECORD_TYP INT NOT NULL DEFAULT 1,
+                CREATED_BY NVARCHAR(50) NOT NULL DEFAULT 'SYSTEM',
+                CREATED_DATE DATETIME NOT NULL DEFAULT SYSDATETIME(),
+                CREATED_LOC NVARCHAR(15) NULL,
+                UPDATED_BY NVARCHAR(50) NULL,
+                UPDATED_DATE DATETIME NULL,
+                UPDATED_LOC NVARCHAR(15) NULL,
+
+                CONSTRAINT PK_DE_TASK_ITEM_TASK_ITEM_ID
+                    PRIMARY KEY (TASK_ITEM_ID),
+
+                CONSTRAINT FK_DE_TASK_ITEM_MM_PROJECT
+                    FOREIGN KEY (PROJECT_ID)
+                    REFERENCES dbo.MM_PROJECT(PROJECT_ID),
+
+                CONSTRAINT FK_DE_TASK_ITEM_DE_PROJECT_COLUMN
+                    FOREIGN KEY (PROJECT_COLUMN_ID)
+                    REFERENCES dbo.DE_PROJECT_COLUMN(PROJECT_COLUMN_ID),
+
+                CONSTRAINT FK_DE_TASK_ITEM_MM_USER
+                    FOREIGN KEY (ASSIGNED_USER_ID)
+                    REFERENCES dbo.MM_USER(USER_ID)
+            );
+        END;
+
+        IF OBJECT_ID('dbo.DE_TASK_ITEM_TAG', 'U') IS NULL
+        BEGIN
+            CREATE TABLE dbo.DE_TASK_ITEM_TAG
+            (
+                TASK_ITEM_ID UNIQUEIDENTIFIER NOT NULL,
+                PROJECT_TAG_ID UNIQUEIDENTIFIER NOT NULL,
+
+                STATUS INT NOT NULL DEFAULT 1,
+                RECORD_TYP INT NOT NULL DEFAULT 1,
+                CREATED_BY NVARCHAR(50) NOT NULL DEFAULT 'SYSTEM',
+                CREATED_DATE DATETIME NOT NULL DEFAULT SYSDATETIME(),
+                CREATED_LOC NVARCHAR(15) NULL,
+                UPDATED_BY NVARCHAR(50) NULL,
+                UPDATED_DATE DATETIME NULL,
+                UPDATED_LOC NVARCHAR(15) NULL,
+
+                CONSTRAINT PK_DE_TASK_ITEM_TAG
+                    PRIMARY KEY (TASK_ITEM_ID, PROJECT_TAG_ID),
+
+                CONSTRAINT FK_DE_TASK_ITEM_TAG_DE_TASK_ITEM
+                    FOREIGN KEY (TASK_ITEM_ID)
+                    REFERENCES dbo.DE_TASK_ITEM(TASK_ITEM_ID),
+
+                CONSTRAINT FK_DE_TASK_ITEM_TAG_MM_PROJECT_TAG
+                    FOREIGN KEY (PROJECT_TAG_ID)
+                    REFERENCES dbo.MM_PROJECT_TAG(PROJECT_TAG_ID)
+            );
+        END;
+
+        IF OBJECT_ID('dbo.DE_TASK_ATTACHMENT', 'U') IS NULL
+        BEGIN
+            CREATE TABLE dbo.DE_TASK_ATTACHMENT
+            (
+                TASK_ATTACHMENT_ID UNIQUEIDENTIFIER NOT NULL,
+                TASK_ITEM_ID UNIQUEIDENTIFIER NOT NULL,
+
+                FILE_NAME NVARCHAR(1024) NOT NULL,
+                FILE_PATH NVARCHAR(MAX) NOT NULL,
+                FILE_TYPE NVARCHAR(255) NULL,
+                FILE_SIZE BIGINT NOT NULL,
+
+                STATUS INT NOT NULL DEFAULT 1,
+                RECORD_TYP INT NOT NULL DEFAULT 1,
+                CREATED_BY NVARCHAR(50) NOT NULL DEFAULT 'SYSTEM',
+                CREATED_DATE DATETIME NOT NULL DEFAULT SYSDATETIME(),
+                CREATED_LOC NVARCHAR(15) NULL,
+                UPDATED_BY NVARCHAR(50) NULL,
+                UPDATED_DATE DATETIME NULL,
+                UPDATED_LOC NVARCHAR(15) NULL,
+
+                CONSTRAINT PK_DE_TASK_ATTACHMENT_ATTACHMENT_ID
+                    PRIMARY KEY (TASK_ATTACHMENT_ID),
+
+                CONSTRAINT FK_DE_TASK_ATTACHMENT_DE_TASK_ITEM
+                    FOREIGN KEY (TASK_ITEM_ID)
+                    REFERENCES dbo.DE_TASK_ITEM(TASK_ITEM_ID)
+            );
+        END;
+
+        IF OBJECT_ID('dbo.DE_TASK_CHECKLIST_ITEM', 'U') IS NULL
+        BEGIN
+            CREATE TABLE dbo.DE_TASK_CHECKLIST_ITEM
+            (
+                TASK_CHECKLIST_ITEM_ID UNIQUEIDENTIFIER NOT NULL,
+                TASK_ITEM_ID UNIQUEIDENTIFIER NOT NULL,
+
+                LABEL NVARCHAR(500) NOT NULL,
+                IS_COMPLETED BIT NOT NULL DEFAULT 0,
+
+                STATUS INT NOT NULL DEFAULT 1,
+                RECORD_TYP INT NOT NULL DEFAULT 1,
+                CREATED_BY NVARCHAR(50) NOT NULL DEFAULT 'SYSTEM',
+                CREATED_DATE DATETIME NOT NULL DEFAULT SYSDATETIME(),
+                CREATED_LOC NVARCHAR(15) NULL,
+                UPDATED_BY NVARCHAR(50) NULL,
+                UPDATED_DATE DATETIME NULL,
+                UPDATED_LOC NVARCHAR(15) NULL,
+
+                CONSTRAINT PK_DE_TASK_CHECKLIST_ITEM_CHECKLIST_ID
+                    PRIMARY KEY (TASK_CHECKLIST_ITEM_ID),
+
+                CONSTRAINT FK_DE_TASK_CHECKLIST_ITEM_DE_TASK_ITEM
+                    FOREIGN KEY (TASK_ITEM_ID)
+                    REFERENCES dbo.DE_TASK_ITEM(TASK_ITEM_ID)
+            );
+        END;
+
+        IF OBJECT_ID('dbo.DE_TASK_ASSIGNEE', 'U') IS NULL
+        BEGIN
+            CREATE TABLE dbo.DE_TASK_ASSIGNEE
+            (
+                TASK_ITEM_ID UNIQUEIDENTIFIER NOT NULL,
+                USER_ID UNIQUEIDENTIFIER NOT NULL,
+
+                STATUS INT NOT NULL DEFAULT 1,
+                RECORD_TYP INT NOT NULL DEFAULT 1,
+                CREATED_BY NVARCHAR(50) NOT NULL DEFAULT 'SYSTEM',
+                CREATED_DATE DATETIME NOT NULL DEFAULT SYSDATETIME(),
+                CREATED_LOC NVARCHAR(15) NULL,
+                UPDATED_BY NVARCHAR(50) NULL,
+                UPDATED_DATE DATETIME NULL,
+                UPDATED_LOC NVARCHAR(15) NULL,
+
+                CONSTRAINT PK_DE_TASK_ASSIGNEE
+                    PRIMARY KEY (TASK_ITEM_ID, USER_ID),
+
+                CONSTRAINT FK_DE_TASK_ASSIGNEE_DE_TASK_ITEM
+                    FOREIGN KEY (TASK_ITEM_ID)
+                    REFERENCES dbo.DE_TASK_ITEM(TASK_ITEM_ID),
+
+                CONSTRAINT FK_DE_TASK_ASSIGNEE_MM_USER
+                    FOREIGN KEY (USER_ID)
+                    REFERENCES dbo.MM_USER(USER_ID)
+            );
+        END;
+
+        IF OBJECT_ID('dbo.MM_CUSTOMER', 'U') IS NULL
+        BEGIN
+            CREATE TABLE dbo.MM_CUSTOMER
+            (
+                CUSTOMER_ID INT IDENTITY(1,1) NOT NULL,
+
+                NAME NVARCHAR(255) NOT NULL,
+                EMAIL NVARCHAR(255) NOT NULL,
+                PHONE NVARCHAR(50) NOT NULL,
+
+                ADDRESS NVARCHAR(MAX) NULL,
+                CITY NVARCHAR(100) NULL,
+                STATE NVARCHAR(100) NULL,
+                POSTAL_CODE NVARCHAR(20) NULL,
+                COUNTRY NVARCHAR(100) NULL,
+
+                CUSTOMER_STATUS NVARCHAR(50) NOT NULL,
+
+                STATUS INT NOT NULL DEFAULT 1,
+                RECORD_TYP INT NOT NULL DEFAULT 1,
+                CREATED_BY NVARCHAR(50) NOT NULL,
+                CREATED_DATE DATETIME NOT NULL,
+                CREATED_LOC NVARCHAR(15) NULL,
+                UPDATED_BY NVARCHAR(50) NULL,
+                UPDATED_DATE DATETIME NULL,
+                UPDATED_LOC NVARCHAR(15) NULL,
+
+                CONSTRAINT PK_MM_CUSTOMER_CUSTOMER_ID
+                    PRIMARY KEY (CUSTOMER_ID)
+            );
+        END;
+
+        IF NOT EXISTS
+        (
+            SELECT 1
+            FROM sys.indexes
+            WHERE name = 'IX_MM_PROJECT_USER_ID'
+            AND object_id = OBJECT_ID('dbo.MM_PROJECT')
+        )
+        BEGIN
+            CREATE INDEX IX_MM_PROJECT_USER_ID
+            ON dbo.MM_PROJECT(USER_ID);
+        END;
+
+        IF NOT EXISTS
+        (
+            SELECT 1
+            FROM sys.indexes
+            WHERE name = 'IX_DE_PROJECT_COLUMN_PROJECT_ID'
+            AND object_id = OBJECT_ID('dbo.DE_PROJECT_COLUMN')
+        )
+        BEGIN
+            CREATE INDEX IX_DE_PROJECT_COLUMN_PROJECT_ID
+            ON dbo.DE_PROJECT_COLUMN(PROJECT_ID);
+        END;
+
+        IF NOT EXISTS
+        (
+            SELECT 1
+            FROM sys.indexes
+            WHERE name = 'IX_MM_PROJECT_TAG_PROJECT_ID'
+            AND object_id = OBJECT_ID('dbo.MM_PROJECT_TAG')
+        )
+        BEGIN
+            CREATE INDEX IX_MM_PROJECT_TAG_PROJECT_ID
+            ON dbo.MM_PROJECT_TAG(PROJECT_ID);
+        END;
+
+        IF NOT EXISTS
+        (
+            SELECT 1
+            FROM sys.indexes
+            WHERE name = 'IX_DE_PROJECT_COLLABORATOR_USER_ID'
+            AND object_id = OBJECT_ID('dbo.DE_PROJECT_COLLABORATOR')
+        )
+        BEGIN
+            CREATE INDEX IX_DE_PROJECT_COLLABORATOR_USER_ID
+            ON dbo.DE_PROJECT_COLLABORATOR(USER_ID);
+        END;
+
+        IF NOT EXISTS
+        (
+            SELECT 1
+            FROM sys.indexes
+            WHERE name = 'IX_DE_TASK_ITEM_PROJECT_ID'
+            AND object_id = OBJECT_ID('dbo.DE_TASK_ITEM')
+        )
+        BEGIN
+            CREATE INDEX IX_DE_TASK_ITEM_PROJECT_ID
+            ON dbo.DE_TASK_ITEM(PROJECT_ID);
+        END;
+
+        IF NOT EXISTS
+        (
+            SELECT 1
+            FROM sys.indexes
+            WHERE name = 'IX_DE_TASK_ITEM_PROJECT_COLUMN_ID'
+            AND object_id = OBJECT_ID('dbo.DE_TASK_ITEM')
+        )
+        BEGIN
+            CREATE INDEX IX_DE_TASK_ITEM_PROJECT_COLUMN_ID
+            ON dbo.DE_TASK_ITEM(PROJECT_COLUMN_ID);
+        END;
+
+        IF NOT EXISTS
+        (
+            SELECT 1
+            FROM sys.indexes
+            WHERE name = 'IX_DE_TASK_ITEM_ASSIGNED_USER_ID'
+            AND object_id = OBJECT_ID('dbo.DE_TASK_ITEM')
+        )
+        BEGIN
+            CREATE INDEX IX_DE_TASK_ITEM_ASSIGNED_USER_ID
+            ON dbo.DE_TASK_ITEM(ASSIGNED_USER_ID);
+        END;
+
+        IF NOT EXISTS
+        (
+            SELECT 1
+            FROM sys.indexes
+            WHERE name = 'IX_DE_TASK_ITEM_TAG_PROJECT_TAG_ID'
+            AND object_id = OBJECT_ID('dbo.DE_TASK_ITEM_TAG')
+        )
+        BEGIN
+            CREATE INDEX IX_DE_TASK_ITEM_TAG_PROJECT_TAG_ID
+            ON dbo.DE_TASK_ITEM_TAG(PROJECT_TAG_ID);
+        END;
+
+        IF NOT EXISTS
+        (
+            SELECT 1
+            FROM sys.indexes
+            WHERE name = 'IX_DE_TASK_ATTACHMENT_TASK_ITEM_ID'
+            AND object_id = OBJECT_ID('dbo.DE_TASK_ATTACHMENT')
+        )
+        BEGIN
+            CREATE INDEX IX_DE_TASK_ATTACHMENT_TASK_ITEM_ID
+            ON dbo.DE_TASK_ATTACHMENT(TASK_ITEM_ID);
+        END;
+
+        IF NOT EXISTS
+        (
+            SELECT 1
+            FROM sys.indexes
+            WHERE name = 'IX_DE_TASK_CHECKLIST_ITEM_TASK_ITEM_ID'
+            AND object_id = OBJECT_ID('dbo.DE_TASK_CHECKLIST_ITEM')
+        )
+        BEGIN
+            CREATE INDEX IX_DE_TASK_CHECKLIST_ITEM_TASK_ITEM_ID
+            ON dbo.DE_TASK_CHECKLIST_ITEM(TASK_ITEM_ID);
+        END;
+
+        IF NOT EXISTS
+        (
+            SELECT 1
+            FROM sys.indexes
+            WHERE name = 'IX_DE_TASK_ASSIGNEE_USER_ID'
+            AND object_id = OBJECT_ID('dbo.DE_TASK_ASSIGNEE')
+        )
+        BEGIN
+            CREATE INDEX IX_DE_TASK_ASSIGNEE_USER_ID
+            ON dbo.DE_TASK_ASSIGNEE(USER_ID);
+        END;
+
+        IF NOT EXISTS
+        (
+            SELECT 1
+            FROM sys.indexes
+            WHERE name = 'IX_MM_CUSTOMER_EMAIL'
+            AND object_id = OBJECT_ID('dbo.MM_CUSTOMER')
+        )
+        BEGIN
+            CREATE INDEX IX_MM_CUSTOMER_EMAIL
+            ON dbo.MM_CUSTOMER(EMAIL);
+        END;
+""");
 
     var passwordHasher = scope.ServiceProvider.GetRequiredService<IPasswordHasher>();
-    var adminExists = await connection.ExecuteScalarAsync<int>(
-        "SELECT COUNT(1) FROM users WHERE LOWER(email) = LOWER(@Email)",
-        new { Email = "admin@cms.local" });
-
-    if (adminExists == 0)
+    var userCount = await connection.ExecuteScalarAsync<int>("SELECT COUNT(1) FROM MM_USER;");
+    if (userCount == 0)
     {
-        var (hash, salt) = passwordHasher.HashPassword("Admin123!");
-        const string insertAdminSql = @"
-            INSERT INTO users (id, full_name, email, password_hash, password_salt, created_at)
-            VALUES (@Id, @FullName, @Email, @PasswordHash, @PasswordSalt, @CreatedAt)";
+        // Seed admin user
+        var (adminHash, adminSalt) = passwordHasher.HashPassword("Admin123!");
+        await connection.ExecuteAsync(
+            @"INSERT INTO MM_USER (USER_ID, FULL_NAME, EMAIL, PASSWORD_HASH, PASSWORD_SALT, RECORD_TYP, CREATED_BY, CREATED_DATE, CREATED_LOC)
+              VALUES (@Id, @FullName, @Email, @PasswordHash, @PasswordSalt, 1, 'SYSTEM', @CreatedAt, '127.0.0.1');",
+            new { Id = Guid.Parse("00000000-0000-0000-0000-000000000001"), FullName = "Admin User", Email = "admin@cms.local", PasswordHash = adminHash, PasswordSalt = adminSalt, CreatedAt = DateTime.UtcNow });
 
-        await connection.ExecuteAsync(insertAdminSql, new
+        // Seed 10 sample user records
+        for (int i = 1; i <= 10; i++)
         {
-            Id = Guid.NewGuid(),
-            FullName = "Admin User",
-            Email = "admin@cms.local",
-            PasswordHash = hash,
-            PasswordSalt = salt,
-            CreatedAt = DateTime.UtcNow,
-        });
-    }
-    else
-    {
-        const string adminCredentialsSql = @"
-            SELECT password_hash AS PasswordHash, password_salt AS PasswordSalt
-            FROM users
-            WHERE LOWER(email) = LOWER(@Email)
-            LIMIT 1";
+            var userId = Guid.NewGuid();
+            var fullName = $"Sample User {i}";
+            var email = $"user{i}@cms.local";
+            var (hash, salt) = passwordHasher.HashPassword("Password123!");
 
-        var credentials = await connection.QuerySingleAsync<AdminCredentials>(
-            adminCredentialsSql,
-            new { Email = "admin@cms.local" });
-
-        if (!IsBase64(credentials.PasswordHash) || !IsBase64(credentials.PasswordSalt))
-        {
-            var (hash, salt) = passwordHasher.HashPassword("Admin123!");
             await connection.ExecuteAsync(
-                "UPDATE users SET password_hash = @Hash, password_salt = @Salt WHERE LOWER(email) = LOWER(@Email)",
-                new { Hash = hash, Salt = salt, Email = "admin@cms.local" });
+                @"INSERT INTO MM_USER (USER_ID, FULL_NAME, EMAIL, PASSWORD_HASH, PASSWORD_SALT, RECORD_TYP, CREATED_BY, CREATED_DATE, CREATED_LOC)
+                  VALUES (@Id, @FullName, @Email, @PasswordHash, @PasswordSalt, 1, 'SYSTEM', @CreatedAt, '127.0.0.1');",
+                new { Id = userId, FullName = fullName, Email = email, PasswordHash = hash, PasswordSalt = salt, CreatedAt = DateTime.UtcNow });
         }
     }
-
-    await connection.ExecuteAsync(
-        """
-        UPDATE project p
-        SET user_id = collaborator.user_id
-        FROM (
-            SELECT DISTINCT ON (project_id) project_id, user_id
-            FROM project_collaborator
-            ORDER BY project_id, joined_at, user_id
-        ) collaborator
-        WHERE p.id = collaborator.project_id
-          AND p.user_id IS NULL;
-
-        UPDATE project
-        SET user_id = (
-            SELECT id
-            FROM users
-            WHERE LOWER(email) = LOWER('admin@cms.local')
-            LIMIT 1
-        )
-        WHERE user_id IS NULL;
-
-        ALTER TABLE project ALTER COLUMN user_id SET NOT NULL;
-
-        DO $$
-        BEGIN
-            IF NOT EXISTS (
-                SELECT 1
-                FROM pg_constraint
-                WHERE conname = 'fk_project_user'
-            ) THEN
-                ALTER TABLE project
-                    ADD CONSTRAINT fk_project_user
-                    FOREIGN KEY (user_id) REFERENCES users (id);
-            END IF;
-        END $$;
-        """);
 }
 
 app.UseExceptionHandler("/error");
@@ -335,15 +618,15 @@ app.MapControllerRoute(name: "default", pattern: "{controller=Home}/{action=Inde
 
 app.Run();
 
-static bool IsBase64(string? value)
-{
-    if (string.IsNullOrWhiteSpace(value))
-    {
-        return false;
-    }
+// static bool IsBase64(string? value)
+// {
+//     if (string.IsNullOrWhiteSpace(value))
+//     {
+//         return false;
+//     }
 
-    return Convert.TryFromBase64String(value, new byte[value.Length], out _);
-}
+//     return Convert.TryFromBase64String(value, new byte[value.Length], out _);
+// }
 
 file sealed class AdminCredentials
 {

@@ -1,12 +1,14 @@
 using CMS.Data;
 using CMS.Models;
 using Dapper;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace CMS.Controllers.Api;
 
 [ApiController]
 [Route("api/users")]
+[Authorize]
 public class UserApiController : ControllerBase
 {
     private readonly DapperContext _context;
@@ -16,17 +18,24 @@ public class UserApiController : ControllerBase
         _context = context;
     }
 
+    // GET: api/users
     [HttpGet]
     public async Task<ActionResult<IEnumerable<UserSearchResult>>> GetAll()
     {
         await using var connection = await _context.CreateOpenConnectionAsync();
 
-        const string sql = "SELECT id, full_name, email FROM users";
+        const string sql = @"
+            SELECT USER_ID AS Id
+                , FULL_NAME AS Name
+                , EMAIL
+            FROM MM_USER WHERE STATUS = 1;
+        ";
 
         var users = await connection.QueryAsync<UserSearchResult>(sql);
         return Ok(users);
     }
 
+    // GET: api/users/search
     [HttpGet("search")]
     public async Task<ActionResult<IEnumerable<UserSearchResult>>> Search([FromQuery] string? q)
     {
@@ -36,29 +45,40 @@ public class UserApiController : ControllerBase
             return Ok(Array.Empty<UserSearchResult>());
         }
 
-        var normalizedSearch = $"%{search.ToLower()}%";
+        var normalizedSearch = $"%{search.ToLower()}";
 
         await using var connection = await _context.CreateOpenConnectionAsync();
 
-        const string sql = "SELECT id, full_name, email FROM users WHERE LOWER(full_name) LIKE @Search OR LOWER(email) LIKE @Search LIMIT 10";
+        const string sql = @"
+            SELECT TOP 10 USER_ID AS Id
+                , FULL_NAME AS Name
+                , EMAIL
+            FROM MM_USER
+            WHERE LOWER(FULL_NAME) LIKE @Search
+                OR LOWER(EMAIL) LIKE @Search
+                AND STATUS = 1
+            ORDER BY FULL_NAME;
+        ";
 
         var users = await connection.QueryAsync<UserSearchResult>(sql, new { Search = normalizedSearch });
         return Ok(users);
     }
 
+    // GET: api/users/id
     [HttpGet("{id:guid}")]
     public async Task<ActionResult<User>> Get(Guid id)
     {
         await using var connection = await _context.CreateOpenConnectionAsync();
 
         const string sql = @"
-            SELECT
-                id,
-                full_name,
-                email,
-                created_at
-            FROM users
-            WHERE id = @Id";
+            SELECT USER_ID AS Id
+                , FULL_NAME AS FullName
+                , EMAIL
+                , CREATED_DATE AS CreatedAt
+            FROM MM_USER
+            WHERE USER_ID = @Id
+                AND STATUS = 1;
+        ";
 
         var user = await connection.QuerySingleOrDefaultAsync<User>(sql, new { Id = id });
         if (user == null)

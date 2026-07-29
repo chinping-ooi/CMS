@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using CMS.Enum;
 
 namespace CMS.Models
 {
@@ -11,6 +12,7 @@ namespace CMS.Models
         public string FilePath { get; set; }
         public string? FileType { get; set; }
         public long FileSize { get; set; }
+        public int Status { get; set; } = 1;
         public DateTime UploadedAt { get; set; }
     }
 }

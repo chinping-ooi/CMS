@@ -1,3 +1,5 @@
+using CMS.Enum;
+
 namespace CMS.Models
 {
     public class ProjectCollaborator
@@ -6,7 +8,8 @@ namespace CMS.Models
         public Project Project { get; set; }
         public Guid UserId { get; set; }
         public User User { get; set; }
-        public string Role { get; set; } = "member";
+        public string Role { get; set; }
+        public int Status { get; set; } = 1;
         public DateTime JoinedAt { get; set; }
     }
 }

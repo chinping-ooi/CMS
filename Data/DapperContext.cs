@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Configuration;
-using Npgsql;
+using Microsoft.Data.SqlClient;
+// using Npgsql;
 
 namespace CMS.Data;
 
@@ -13,15 +14,27 @@ public sealed class DapperContext
             ?? throw new InvalidOperationException("Connection string 'DefaultConnection' is not configured.");
     }
 
-    public NpgsqlConnection CreateConnection()
+    public SqlConnection  CreateConnection()
     {
-        return new NpgsqlConnection(_connectionString);
+        return new SqlConnection (_connectionString);
     }
-
-    public async Task<NpgsqlConnection> CreateOpenConnectionAsync()
+    
+    public async Task<SqlConnection> CreateOpenConnectionAsync()
     {
         var connection = CreateConnection();
         await connection.OpenAsync();
         return connection;
     }
+
+    // public NpgsqlConnection CreateConnection()
+    // {
+    //     return new NpgsqlConnection(_connectionString);
+    // }
+
+    // public async Task<NpgsqlConnection> CreateOpenConnectionAsync()
+    // {
+    //     var connection = CreateConnection();
+    //     await connection.OpenAsync();
+    //     return connection;
+    // }
 }

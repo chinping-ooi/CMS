@@ -48,7 +48,7 @@ public class ProjectController : Controller
         if (selectedCollaboratorIds.Length > 0)
         {
             validCollaboratorIds = (await connection.QueryAsync<Guid>(
-                "SELECT id FROM users WHERE id = ANY(@Ids)",
+                "SELECT \"USER_ID\" FROM \"MM_USER\" WHERE \"USER_ID\" = ANY(@Ids);",
                 new { Ids = selectedCollaboratorIds }))
                 .ToList();
 
@@ -127,24 +127,24 @@ public class ProjectController : Controller
 
         try
         {
-            const string insertProjectSql = "INSERT INTO project (id, user_id, name, description, created_at, updated_at) VALUES (@Id, @UserId, @Name, @Description, @CreatedAt, @UpdatedAt)";
+            const string insertProjectSql = "INSERT INTO \"MM_PROJECT\" (\"PROJECT_ID\", \"USER_ID\", \"NAME\", \"DESCRIPTION\", \"RECORD_TYP\", \"CREATED_BY\", \"CREATED_DATE\", \"CREATED_LOC\", \"UPDATED_BY\", \"UPDATED_DATE\", \"UPDATED_LOC\") VALUES (@Id, @UserId, @Name, @Description, 1, 'SYSTEM', @CreatedAt, '127.0.0.1', 'SYSTEM', @UpdatedAt, '127.0.0.1');";
             await connection.ExecuteAsync(insertProjectSql, projectToSave, transaction);
 
-            const string insertColumnSql = "INSERT INTO project_column (id, project_id, name, position, created_at) VALUES (@Id, @ProjectId, @Name, @Position, @CreatedAt)";
+            const string insertColumnSql = "INSERT INTO \"DE_PROJECT_COLUMN\" (\"PROJECT_COLUMN_ID\", \"PROJECT_ID\", \"NAME\", \"POSITION\", \"RECORD_TYP\", \"CREATED_BY\", \"CREATED_DATE\", \"CREATED_LOC\") VALUES (@Id, @ProjectId, @Name, @Position, 1, 'SYSTEM', @CreatedAt, '127.0.0.1');";
             foreach (var column in projectToSave.Columns)
             {
                 column.ProjectId = projectToSave.Id;
                 await connection.ExecuteAsync(insertColumnSql, column, transaction);
             }
 
-            const string insertTagSql = "INSERT INTO project_tag (id, project_id, name, color, created_at) VALUES (@Id, @ProjectId, @Name, @Color, @CreatedAt)";
+            const string insertTagSql = "INSERT INTO \"MM_PROJECT_TAG\" (\"PROJECT_TAG_ID\", \"PROJECT_ID\", \"NAME\", \"COLOR\", \"RECORD_TYP\", \"CREATED_BY\", \"CREATED_DATE\", \"CREATED_LOC\") VALUES (@Id, @ProjectId, @Name, @Color, 1, 'SYSTEM', @CreatedAt, '127.0.0.1');";
             foreach (var tag in projectToSave.Tags)
             {
                 tag.ProjectId = projectToSave.Id;
                 await connection.ExecuteAsync(insertTagSql, tag, transaction);
             }
 
-            const string insertCollaboratorSql = "INSERT INTO project_collaborator (project_id, user_id, role, joined_at) VALUES (@ProjectId, @UserId, @Role, @JoinedAt)";
+            const string insertCollaboratorSql = "INSERT INTO \"DE_PROJECT_COLLABORATOR\" (\"PROJECT_ID\", \"USER_ID\", \"ROLE\", \"RECORD_TYP\", \"CREATED_BY\", \"CREATED_DATE\", \"CREATED_LOC\") VALUES (@ProjectId, @UserId, @Role, 1, 'SYSTEM', @JoinedAt, '127.0.0.1');";
             foreach (var collaborator in projectToSave.Collaborators)
             {
                 collaborator.ProjectId = projectToSave.Id;

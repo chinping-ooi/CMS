@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using CMS.Enum;
 
 namespace CMS.Models
 {
@@ -13,7 +14,8 @@ namespace CMS.Models
         public string? State { get; set; }
         public string? Postal_Code { get; set; }
         public string? Country { get; set; }
-        public int Record_Typ { get; set; } = 1;
+        public int Status { get; set; } = 1;
+        public Record_Type Record_Typ { get; set; }
         public string Customer_Status { get; set; }
         public string Created_By { get; set; }
         public DateTime Created_Date { get; set; }

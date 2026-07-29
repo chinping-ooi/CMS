@@ -1,5 +1,6 @@
 using CMS.Data;
 using CMS.Models;
+using CMS.Enum;
 using Dapper;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -20,13 +21,23 @@ public class ProjectApiController : ControllerBase
         _context = context;
     }
 
+
     // GET: api/projects
     [HttpGet]
     public async Task<ActionResult<IEnumerable<ProjectApiResponse>>> GetAll()
     {
         await using var connection = await _context.CreateOpenConnectionAsync();
 
-        const string sql = "SELECT id, user_id AS UserId, name, description, created_at, updated_at FROM project";
+        const string sql = @"
+            SELECT PROJECT_ID AS Id
+                , USER_ID AS UserId
+                , NAME
+                , DESCRIPTION
+                , CREATED_DATE AS CreatedAt
+                , UPDATED_DATE AS UpdatedAt
+            FROM MM_PROJECT
+            WHERE STATUS = 1;
+        ";
 
         var projects = (await connection.QueryAsync<Project>(sql)).ToList();
         return Ok(projects.Select(MapProject).ToList());
@@ -38,7 +49,17 @@ public class ProjectApiController : ControllerBase
     {
         await using var connection = await _context.CreateOpenConnectionAsync();
 
-        const string projectSql = "SELECT id, user_id AS UserId, name, description, created_at, updated_at FROM project WHERE id = @Id";
+        const string projectSql = @"
+            SELECT PROJECT_ID AS Id
+                , USER_ID AS UserId
+                , NAME
+                , DESCRIPTION
+                , CREATED_DATE AS CreatedAt
+                , UPDATED_DATE AS UpdatedAt
+            FROM MM_PROJECT
+            WHERE PROJECT_ID = @Id
+                AND STATUS = 1;
+        ";
 
         var project = await connection.QuerySingleOrDefaultAsync<Project>(projectSql, new { Id = id });
         if (project == null)
@@ -46,15 +67,47 @@ public class ProjectApiController : ControllerBase
             return NotFound();
         }
 
-        const string columnsSql = "SELECT id, project_id, name, position, created_at FROM project_column WHERE project_id = @ProjectId";
+        const string columnsSql = @"
+            SELECT PROJECT_COLUMN_ID AS Id
+                , PROJECT_ID AS ProjectId
+                , NAME
+                , POSITION
+                , CREATED_DATE AS CreatedAt
+            FROM DE_PROJECT_COLUMN
+            WHERE PROJECT_ID = @ProjectId
+                AND STATUS = 1
+            ORDER BY POSITION;
+        ";
 
         project.Columns = (await connection.QueryAsync<ProjectColumn>(columnsSql, new { ProjectId = id })).ToList();
 
-        const string tagsSql = "SELECT id, project_id, name, color, created_at FROM project_tag WHERE project_id = @ProjectId";
+        const string tagsSql = @"
+            SELECT PROJECT_TAG_ID AS Id
+                , PROJECT_ID AS ProjectId
+                , NAME
+                , COLOR
+                , CREATED_DATE AS CreatedAt
+            FROM MM_PROJECT_TAG
+            WHERE PROJECT_ID = @ProjectId
+                AND STATUS = 1;
+        ";
 
         project.Tags = (await connection.QueryAsync<ProjectTag>(tagsSql, new { ProjectId = id })).ToList();
 
-        const string collaboratorsSql = "SELECT pc.project_id AS ProjectId, pc.user_id AS UserId, pc.role AS Role, pc.joined_at AS JoinedAt, u.id AS Id, u.full_name AS FullName, u.email AS Email, u.created_at AS CreatedAt FROM project_collaborator pc LEFT JOIN users u ON u.id = pc.user_id WHERE pc.project_id = @ProjectId";
+        const string collaboratorsSql = @"
+            SELECT PC.PROJECT_ID AS ProjectId
+                , PC.USER_ID AS UserId
+                , PC.ROLE AS ROLE
+                , PC.CREATED_DATE AS JoinedAt
+                , U.USER_ID AS Id
+                , U.FULL_NAME AS FullName
+                , U.EMAIL AS Email
+                , U.CREATED_DATE AS CreatedAt
+            FROM DE_PROJECT_COLLABORATOR PC
+            LEFT JOIN MM_USER U ON U.USER_ID = PC.USER_ID
+            WHERE PC.PROJECT_ID = @ProjectId
+                AND PC.STATUS = 1;
+        ";
 
         project.Collaborators = (await connection.QueryAsync<ProjectCollaborator, User, ProjectCollaborator>(
             collaboratorsSql,
@@ -64,9 +117,29 @@ public class ProjectApiController : ControllerBase
                 return collaborator;
             },
             new { ProjectId = id },
-            splitOn: "id")).ToList();
+            splitOn: "Id")).ToList();
 
-        const string tasksSql = "SELECT ti.id, ti.title, ti.description, ti.project_id AS ProjectId, ti.column_id AS ColumnId, ti.assigned_user_id AS AssignedUserId, ti.start_date AS StartDate, ti.due_date AS DueDate, ti.priority, ti.created_at AS CreatedAt, ti.updated_at AS UpdatedAt, u.id, u.full_name, u.email, u.created_at FROM task_item ti LEFT JOIN users u ON u.id = ti.assigned_user_id WHERE ti.project_id = @ProjectId";
+        const string tasksSql = @"
+            SELECT TI.TASK_ITEM_ID AS Id
+                , TI.TITLE
+                , TI.DESCRIPTION
+                , TI.PROJECT_ID AS ProjectId
+                , TI.PROJECT_COLUMN_ID AS ColumnId
+                , TI.ASSIGNED_USER_ID AS AssignedUserId
+                , TI.START_DATE AS StartDate
+                , TI.DUE_DATE AS DueDate
+                , TI.PRIORITY
+                , TI.CREATED_DATE AS CreatedAt
+                , TI.UPDATED_DATE AS UpdatedAt
+                , U.USER_ID AS Id
+                , U.FULL_NAME AS FullName
+                , U.EMAIL AS Email
+                , U.CREATED_DATE AS CreatedAt
+            FROM DE_TASK_ITEM TI
+            LEFT JOIN MM_USER U ON U.USER_ID = TI.ASSIGNED_USER_ID
+            WHERE TI.PROJECT_ID = @ProjectId
+                AND TI.STATUS = 1
+        ";
 
         project.Tasks = (await connection.QueryAsync<TaskItem, User, TaskItem>(
             tasksSql,
@@ -82,12 +155,18 @@ public class ProjectApiController : ControllerBase
         {
             var taskIds = project.Tasks.Select(task => task.Id).ToArray();
             const string assigneesSql = @"
-                SELECT ta.task_id AS TaskId, ta.user_id AS UserId, ta.assigned_at AS AssignedAt,
-                       u.id AS Id, u.full_name AS FullName, u.email AS Email, u.created_at AS CreatedAt
-                FROM task_assignee ta
-                JOIN users u ON u.id = ta.user_id
-                WHERE ta.task_id = ANY(@TaskIds)
-                ORDER BY ta.assigned_at";
+                SELECT TA.TASK_ITEM_ID AS TaskId
+                    , TA.USER_ID AS UserId
+                    , TA.CREATED_DATE AS AssignedAt
+                    , U.USER_ID AS Id
+                    , U.FULL_NAME AS FullName
+                    , U.EMAIL AS Email
+                    , U.CREATED_DATE AS CreatedAt
+                FROM DE_TASK_ASSIGNEE TA
+                JOIN MM_USER U ON U.USER_ID = TA.USER_ID
+                WHERE TA.TASK_ITEM_ID = ANY (@TaskIds)
+                    AND TA.STATUS = 1
+                ORDER BY TA.CREATED_DATE;";
 
             var assignees = await connection.QueryAsync<TaskAssignee, User, TaskAssignee>(
                 assigneesSql,
@@ -115,14 +194,16 @@ public class ProjectApiController : ControllerBase
         {
             var taskIds = project.Tasks.Select(task => task.Id).ToArray();
             const string taskTagsSql = @"
-                SELECT tit.task_id AS TaskId,
-                       tit.tag_id AS TagId,
-                       pt.id AS Id,
-                       pt.name AS Name,
-                       pt.color AS Color
-                FROM task_item_tag tit
-                JOIN project_tag pt ON pt.id = tit.tag_id
-                WHERE tit.task_id = ANY(@TaskIds)";
+                SELECT TIT.TASK_ITEM_ID AS TaskId
+                    , TIT.PROJECT_TAG_ID AS TagId
+                    , PT.PROJECT_TAG_ID AS Id
+                    , PT.NAME AS Name
+                    , PT.COLOR AS Color
+                FROM DE_TASK_ITEM_TAG TIT
+                JOIN MM_PROJECT_TAG PT ON PT.PROJECT_TAG_ID = TIT.PROJECT_TAG_ID
+                WHERE TIT.TASK_ITEM_ID = ANY (@TaskIds)
+                    AND TIT.STATUS = 1;
+            ";
 
             var taskTagRows = (await connection.QueryAsync<TaskTagRow>(taskTagsSql, new { TaskIds = taskIds })).ToList();
             var taskTagsByTask = taskTagRows.GroupBy(row => row.TaskId)
@@ -155,9 +236,17 @@ public class ProjectApiController : ControllerBase
         {
             var taskIds = project.Tasks.Select(task => task.Id).ToArray();
             const string taskAttachmentsSql = @"
-                SELECT id, task_id AS TaskId, file_name AS FileName, file_path AS FilePath, file_type AS FileType, file_size AS FileSize, uploaded_at AS UploadedAt
-                FROM task_attachment
-                WHERE task_id = ANY(@TaskIds)";
+                SELECT TASK_ATTACHMENT_ID AS Id
+                    , TASK_ITEM_ID AS TaskId
+                    , FILE_NAME AS FileName
+                    , FILE_PATH AS FilePath
+                    , FILE_TYPE AS FileType
+                    , FILE_SIZE AS FileSize
+                    , CREATED_DATE AS UploadedAt
+                FROM DE_TASK_ATTACHMENT
+                WHERE TASK_ITEM_ID = ANY (@TaskIds)
+                    AND STATUS = 1;
+            ";
 
             var attachments = (await connection.QueryAsync<TaskAttachment>(taskAttachmentsSql, new { TaskIds = taskIds })).ToList();
             var attachmentsByTask = attachments.GroupBy(a => a.TaskId).ToDictionary(g => g.Key, g => g.ToList());
@@ -198,11 +287,65 @@ public class ProjectApiController : ControllerBase
         await using var connection = await _context.CreateOpenConnectionAsync();
         await using var transaction = await connection.BeginTransactionAsync();
 
-        const string insertProjectSql = "INSERT INTO project (id, user_id, name, description, created_at, updated_at) VALUES (@Id, @UserId, @Name, @Description, @CreatedAt, @UpdatedAt)";
+        const string insertProjectSql = @"
+            INSERT INTO MM_PROJECT (
+                PROJECT_ID
+                , USER_ID
+                , NAME
+                , DESCRIPTION
+                , CREATED_DATE
+                , UPDATED_DATE
+                , RECORD_TYP
+                , CREATED_BY
+                , CREATED_LOC
+                , UPDATED_BY
+                , UPDATED_LOC
+                )
+            VALUES (
+                @Id
+                , @UserId
+                , @Name
+                , @Description
+                , @CreatedAt
+                , @UpdatedAt
+                , 1
+                , 'SYSTEM'
+                , '127.0.0.1'
+                , 'SYSTEM'
+                , '127.0.0.1'
+            );
+        ";
 
         await connection.ExecuteAsync(insertProjectSql, project, transaction);
 
-        const string insertColumnSql = "INSERT INTO project_column (id, project_id, name, position, created_at) VALUES (@Id, @ProjectId, @Name, @Position, @CreatedAt)";
+        const string insertColumnSql = @"
+            INSERT INTO DE_PROJECT_COLUMN (
+                PROJECT_COLUMN_ID
+                , PROJECT_ID
+                , NAME
+                , POSITION
+                , CREATED_DATE
+                , RECORD_TYP
+                , CREATED_BY
+                , CREATED_LOC
+                , UPDATED_BY
+                , UPDATED_DATE
+                , UPDATED_LOC
+                )
+            VALUES (
+                @Id
+                , @ProjectId
+                , @Name
+                , @Position
+                , @CreatedAt
+                , 1
+                , 'SYSTEM'
+                , '127.0.0.1'
+                , 'SYSTEM'
+                , @CreatedAt
+                , '127.0.0.1'
+            );
+        ";
 
         foreach (var column in project.Columns)
         {
@@ -212,7 +355,34 @@ public class ProjectApiController : ControllerBase
             await connection.ExecuteAsync(insertColumnSql, column, transaction);
         }
 
-        const string insertTagSql = "INSERT INTO project_tag (id, project_id, name, color, created_at) VALUES (@Id, @ProjectId, @Name, @Color, @CreatedAt)";
+        const string insertTagSql = @"
+            INSERT INTO MM_PROJECT_TAG (
+                PROJECT_TAG_ID
+                , PROJECT_ID
+                , NAME
+                , COLOR
+                , CREATED_DATE
+                , RECORD_TYP
+                , CREATED_BY
+                , CREATED_LOC
+                , UPDATED_BY
+                , UPDATED_DATE
+                , UPDATED_LOC
+                )
+            VALUES (
+                @Id
+                , @ProjectId
+                , @Name
+                , @Color
+                , @CreatedAt
+                , 1
+                , 'SYSTEM'
+                , '127.0.0.1'
+                , 'SYSTEM'
+                , @CreatedAt
+                , '127.0.0.1'
+            );
+        ";
 
         foreach (var tag in project.Tags)
         {
@@ -222,7 +392,32 @@ public class ProjectApiController : ControllerBase
             await connection.ExecuteAsync(insertTagSql, tag, transaction);
         }
 
-        const string insertCollaboratorSql = "INSERT INTO project_collaborator (project_id, user_id, role, joined_at) VALUES (@ProjectId, @UserId, @Role, @JoinedAt)";
+        const string insertCollaboratorSql = @"
+            INSERT INTO DE_PROJECT_COLLABORATOR (
+                PROJECT_ID
+                , USER_ID
+                , ROLE
+                , RECORD_TYP
+                , CREATED_BY
+                , CREATED_DATE
+                , CREATED_LOC
+                , UPDATED_BY
+                , UPDATED_DATE
+                , UPDATED_LOC
+                )
+            VALUES (
+                @ProjectId
+                , @UserId
+                , @Role
+                , 1
+                , 'SYSTEM'
+                , @JoinedAt
+                , '127.0.0.1'
+                , 'SYSTEM'
+                , @JoinedAt
+                , '127.0.0.1'
+            );
+        ";
 
         var collaborators = project.Collaborators
             .Where(collaborator => collaborator.UserId != ownerUserId)
@@ -288,7 +483,7 @@ public class ProjectApiController : ControllerBase
             AssignedUserId = assigneeIds.FirstOrDefault() == Guid.Empty ? null : assigneeIds.FirstOrDefault(),
             StartDate = request.StartDate,
             DueDate = request.DueDate,
-            Priority = string.IsNullOrWhiteSpace(request.Priority) ? "Medium" : request.Priority,
+            Priority = request.Priority,
             Category = request.TagId.HasValue ? request.TagId.Value.ToString() : null,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow,
@@ -300,18 +495,76 @@ public class ProjectApiController : ControllerBase
         await using var transaction = await connection.BeginTransactionAsync();
 
         const string insertTaskSql = @"
-            INSERT INTO task_item
-                (id, title, description, board_type, project_id, column_id, assigned_user_id, start_date, due_date, priority, category, created_at, updated_at)
-            VALUES
-                (@Id, @Title, @Description, @BoardType, @ProjectId, @ColumnId, @AssignedUserId, @StartDate, @DueDate, @Priority, @Category, @CreatedAt, @UpdatedAt)";
+            INSERT INTO DE_TASK_ITEM (
+                TASK_ITEM_ID
+                , TITLE
+                , DESCRIPTION
+                , BOARD_TYPE
+                , PROJECT_ID
+                , PROJECT_COLUMN_ID
+                , ASSIGNED_USER_ID
+                , START_DATE
+                , DUE_DATE
+                , PRIORITY
+                , CATEGORY
+                , CREATED_DATE
+                , UPDATED_DATE
+                , RECORD_TYP
+                , CREATED_BY
+                , CREATED_LOC
+                , UPDATED_BY
+                , UPDATED_LOC
+                )
+            VALUES (
+                @Id
+                , @Title
+                , @Description
+                , @BoardType
+                , @ProjectId
+                , @ColumnId
+                , @AssignedUserId
+                , @StartDate
+                , @DueDate
+                , @Priority
+                , @Category
+                , @CreatedAt
+                , @UpdatedAt
+                , 1
+                , 'SYSTEM'
+                , '127.0.0.1'
+                , 'SYSTEM'
+                , '127.0.0.1'
+            );
+        ";
 
         await connection.ExecuteAsync(insertTaskSql, task, transaction);
 
         if (request.TagId.HasValue)
         {
             const string insertTaskTagSql = @"
-                INSERT INTO task_item_tag (task_id, tag_id)
-                VALUES (@TaskId, @TagId)";
+                INSERT INTO DE_TASK_ITEM_TAG (
+                    TASK_ITEM_ID
+                    , PROJECT_TAG_ID
+                    , RECORD_TYP
+                    , CREATED_BY
+                    , CREATED_DATE
+                    , CREATED_LOC
+                    , UPDATED_BY
+                    , UPDATED_DATE
+                    , UPDATED_LOC
+                    )
+                VALUES (
+                    @TaskId
+                    , @TagId
+                    , 1
+                    , 'SYSTEM'
+                    , CURRENT_TIMESTAMP
+                    , '127.0.0.1'
+                    , 'SYSTEM'
+                    , CURRENT_TIMESTAMP
+                    , '127.0.0.1'
+                );
+            ";
 
             await connection.ExecuteAsync(insertTaskTagSql, new { TaskId = task.Id, TagId = request.TagId.Value }, transaction);
         }
@@ -319,8 +572,31 @@ public class ProjectApiController : ControllerBase
         if (assigneeIds.Count > 0)
         {
             const string insertAssigneeSql = @"
-                INSERT INTO task_assignee (task_id, user_id, assigned_at)
-                VALUES (@TaskId, @UserId, @AssignedAt)";
+                INSERT INTO DE_TASK_ASSIGNEE (
+                    TASK_ITEM_ID
+                    , USER_ID
+                    , ASSIGNED_AT
+                    , RECORD_TYP
+                    , CREATED_BY
+                    , CREATED_DATE
+                    , CREATED_LOC
+                    , UPDATED_BY
+                    , UPDATED_DATE
+                    , UPDATED_LOC
+                    )
+                VALUES (
+                    @TaskId
+                    , @UserId
+                    , @AssignedAt
+                    , 1
+                    , 'SYSTEM'
+                    , @AssignedAt
+                    , '127.0.0.1'
+                    , 'SYSTEM'
+                    , @AssignedAt
+                    , '127.0.0.1'
+                );
+            ";
 
             foreach (var userId in assigneeIds)
             {
@@ -354,16 +630,29 @@ public class ProjectApiController : ControllerBase
         await using var connection = await _context.CreateOpenConnectionAsync();
 
         const string taskSql = @"
-            SELECT ti.id, ti.title, ti.description, ti.project_id AS ProjectId, ti.column_id AS ColumnId,
-                   ti.board_type AS BoardType, ti.assigned_user_id AS AssignedUserId,
-                   ti.start_date AS StartDate, ti.due_date AS DueDate, ti.priority, ti.category AS Category,
-                   ti.created_at AS CreatedAt, ti.updated_at AS UpdatedAt,
-                   u.full_name AS AssignedUserName, u.email AS AssignedUserEmail,
-                   pc.name AS ColumnName
-            FROM task_item ti
-            LEFT JOIN users u ON u.id = ti.assigned_user_id
-            LEFT JOIN project_column pc ON pc.id = ti.column_id
-            WHERE ti.id = @TaskId AND ti.project_id = @ProjectId";
+            SELECT TI.TASK_ITEM_ID AS Id
+                , TI.TITLE
+                , TI.DESCRIPTION
+                , TI.PROJECT_ID AS ProjectId
+                , TI.PROJECT_COLUMN_ID AS ColumnId
+                , TI.BOARD_TYPE AS BoardType
+                , TI.ASSIGNED_USER_ID AS AssignedUserId
+                , TI.START_DATE AS StartDate
+                , TI.DUE_DATE AS DueDate
+                , TI.PRIORITY
+                , TI.CATEGORY AS Category
+                , TI.CREATED_DATE AS CreatedAt
+                , TI.UPDATED_DATE AS UpdatedAt
+                , U.FULL_NAME AS AssignedUserName
+                , U.EMAIL AS AssignedUserEmail
+                , PC.NAME AS ColumnName
+            FROM DE_TASK_ITEM TI
+            LEFT JOIN MM_USER U ON U.USER_ID = TI.ASSIGNED_USER_ID
+            LEFT JOIN DE_PROJECT_COLUMN PC ON PC.PROJECT_COLUMN_ID = TI.PROJECT_COLUMN_ID
+            WHERE TI.TASK_ITEM_ID = @TaskId
+                AND TI.PROJECT_ID = @ProjectId
+                AND TI.STATUS = 1;
+        ";
 
         var taskRows = await connection.QueryAsync<TaskDetailRow>(taskSql, new { TaskId = taskId, ProjectId = projectId });
         var taskRow = taskRows.FirstOrDefault();
@@ -372,41 +661,68 @@ public class ProjectApiController : ControllerBase
             return NotFound();
         }
 
-        const string projectSql = "SELECT name FROM project WHERE id = @ProjectId";
+        const string projectSql = @"
+            SELECT NAME
+            FROM MM_PROJECT
+            WHERE PROJECT_ID = @ProjectId
+                AND STATUS = 1;
+        ";
+
         var projectName = await connection.QuerySingleOrDefaultAsync<string>(projectSql, new { ProjectId = projectId });
 
         const string checklistSql = @"
-            SELECT id, task_id AS TaskId, label AS Label, is_completed AS IsCompleted,
-                   created_at AS CreatedAt, updated_at AS UpdatedAt
-            FROM task_checklist_item
-            WHERE task_id = @TaskId
-            ORDER BY created_at";
+            SELECT TASK_CHECKLIST_ITEM_ID AS Id
+                , TASK_ITEM_ID AS TaskId
+                , LABEL AS Label
+                , IS_COMPLETED AS IsCompleted
+                , CREATED_DATE AS CreatedAt
+                , UPDATED_DATE AS UpdatedAt
+            FROM DE_TASK_CHECKLIST_ITEM
+            WHERE TASK_ITEM_ID = @TaskId
+                AND STATUS = 1
+            ORDER BY CREATED_DATE;
+        ";
 
         var checklist = (await connection.QueryAsync<TaskChecklistItem>(checklistSql, new { TaskId = taskId })).ToList();
 
         const string attachmentsSql = @"
-            SELECT id, task_id AS TaskId, file_name AS FileName, file_path AS FilePath,
-                   file_type AS FileType, file_size AS FileSize, uploaded_at AS UploadedAt
-            FROM task_attachment
-            WHERE task_id = @TaskId
-            ORDER BY uploaded_at DESC";
+            SELECT TASK_ATTACHMENT_ID AS Id
+                , TASK_ITEM_ID AS TaskId
+                , FILE_NAME AS FileName
+                , FILE_PATH AS FilePath
+                , FILE_TYPE AS FileType
+                , FILE_SIZE AS FileSize
+                , CREATED_DATE AS UploadedAt
+            FROM DE_TASK_ATTACHMENT
+            WHERE TASK_ITEM_ID = @TaskId
+                AND STATUS = 1
+            ORDER BY CREATED_DATE DESC;
+        ";
 
         var attachments = (await connection.QueryAsync<TaskAttachment>(attachmentsSql, new { TaskId = taskId })).ToList();
 
         const string tagsSql = @"
-            SELECT pt.id, pt.name, pt.color
-            FROM task_item_tag tit
-            JOIN project_tag pt ON pt.id = tit.tag_id
-            WHERE tit.task_id = @TaskId";
+            SELECT PT.PROJECT_TAG_ID AS Id
+                , PT.NAME AS Name
+                , PT.COLOR AS Color
+            FROM DE_TASK_ITEM_TAG TIT
+            JOIN MM_PROJECT_TAG PT ON PT.PROJECT_TAG_ID = TIT.PROJECT_TAG_ID
+            WHERE TIT.TASK_ITEM_ID = @TaskId
+                AND TIT.STATUS = 1;
+        ";
 
         var tags = (await connection.QueryAsync<ProjectTag>(tagsSql, new { TaskId = taskId })).ToList();
 
         const string assigneesSql = @"
-            SELECT ta.user_id AS UserId, u.full_name AS FullName, u.email AS Email
-            FROM task_assignee ta
-            JOIN users u ON u.id = ta.user_id
-            WHERE ta.task_id = @TaskId
-            ORDER BY ta.assigned_at";
+            SELECT TA.USER_ID AS UserId
+                , U.FULL_NAME AS FullName
+                , U.EMAIL AS Email
+            FROM DE_TASK_ASSIGNEE TA
+            JOIN MM_USER U ON U.USER_ID = TA.USER_ID
+            WHERE TA.TASK_ITEM_ID = @TaskId
+                AND TA.STATUS = 1
+            ORDER BY TA.CREATED_DATE;
+        ";
 
         var assignees = (await connection.QueryAsync<TaskAssigneeApiResponse>(assigneesSql, new { TaskId = taskId })).ToList();
 
@@ -424,9 +740,14 @@ public class ProjectApiController : ControllerBase
         var categoryName = ResolveCategoryName(taskRow.Category, tags);
         if (string.IsNullOrWhiteSpace(categoryName) && Guid.TryParse(taskRow.Category, out var categoryId))
         {
-            categoryName = await connection.QuerySingleOrDefaultAsync<string>(
-                "SELECT name FROM project_tag WHERE id = @Id",
-                new { Id = categoryId });
+            const string categorySql = @"
+                SELECT NAME
+                FROM MM_PROJECT_TAG
+                WHERE PROJECT_TAG_ID = @Id
+                    AND STATUS = 1;
+            ";
+
+            categoryName = await connection.QuerySingleOrDefaultAsync<string>(categorySql, new { Id = categoryId });
         }
 
         if (string.IsNullOrWhiteSpace(categoryName) && tags.Count > 0)
@@ -453,7 +774,7 @@ public class ProjectApiController : ControllerBase
             Assignees = assignees,
             StartDate = taskRow.StartDate,
             DueDate = taskRow.DueDate,
-            Priority = taskRow.Priority ?? string.Empty,
+            Priority = taskRow.Priority ?? default,
             Category = categoryName,
             CreatedAt = taskRow.CreatedAt,
             UpdatedAt = taskRow.UpdatedAt,
@@ -496,7 +817,14 @@ public class ProjectApiController : ControllerBase
 
         await using var connection = await _context.CreateOpenConnectionAsync();
 
-        const string taskExistsSql = "SELECT COUNT(1) FROM task_item WHERE id = @TaskId AND project_id = @ProjectId";
+        const string taskExistsSql = @"
+            SELECT COUNT(1)
+            FROM DE_TASK_ITEM
+            WHERE TASK_ITEM_ID = @TaskId
+                AND PROJECT_ID = @ProjectId
+                AND STATUS = 1;
+        ";
+
         var taskExists = await connection.ExecuteScalarAsync<int>(taskExistsSql, new { TaskId = taskId, ProjectId = projectId }) > 0;
         if (!taskExists)
         {
@@ -514,8 +842,33 @@ public class ProjectApiController : ControllerBase
         };
 
         const string insertSql = @"
-            INSERT INTO task_checklist_item (id, task_id, label, is_completed, created_at, updated_at)
-            VALUES (@Id, @TaskId, @Label, @IsCompleted, @CreatedAt, @UpdatedAt)";
+            INSERT INTO DE_TASK_CHECKLIST_ITEM (
+                TASK_CHECKLIST_ITEM_ID
+                , TASK_ITEM_ID
+                , LABEL
+                , IS_COMPLETED
+                , CREATED_DATE
+                , UPDATED_DATE
+                , RECORD_TYP
+                , CREATED_BY
+                , CREATED_LOC
+                , UPDATED_BY
+                , UPDATED_LOC
+                )
+            VALUES (
+                @Id
+                , @TaskId
+                , @Label
+                , @IsCompleted
+                , @CreatedAt
+                , @UpdatedAt
+                , 1
+                , 'SYSTEM'
+                , '127.0.0.1'
+                , 'SYSTEM'
+                , '127.0.0.1'
+            );
+        ";
 
         await connection.ExecuteAsync(insertSql, item);
 
@@ -539,14 +892,25 @@ public class ProjectApiController : ControllerBase
         }
 
         await using var connection = await _context.CreateOpenConnectionAsync();
-        const string projectExistsSql = "SELECT COUNT(1) FROM project WHERE id = @ProjectId";
+        const string projectExistsSql = @"
+            SELECT COUNT(1)
+            FROM MM_PROJECT
+            WHERE PROJECT_ID = @ProjectId
+                AND STATUS = 1;
+        ";
         var projectExists = await connection.ExecuteScalarAsync<int>(projectExistsSql, new { ProjectId = projectId }) > 0;
         if (!projectExists)
         {
             return NotFound();
         }
 
-        const string nextPositionSql = "SELECT COALESCE(MAX(position), -1) + 1 FROM project_column WHERE project_id = @ProjectId";
+        const string nextPositionSql = @"
+            SELECT COALESCE(MAX(POSITION), - 1) + 1
+            FROM DE_PROJECT_COLUMN
+            WHERE PROJECT_ID = @ProjectId
+                AND STATUS = 1;
+        ";
+
         var position = await connection.ExecuteScalarAsync<int>(nextPositionSql, new { ProjectId = projectId });
         var column = new ProjectColumn
         {
@@ -557,7 +921,35 @@ public class ProjectApiController : ControllerBase
             CreatedAt = DateTime.UtcNow,
         };
 
-        const string insertColumnSql = "INSERT INTO project_column (id, project_id, name, position, created_at) VALUES (@Id, @ProjectId, @Name, @Position, @CreatedAt)";
+        const string insertColumnSql = @"
+            INSERT INTO DE_PROJECT_COLUMN (
+                PROJECT_COLUMN_ID
+                , PROJECT_ID
+                , NAME
+                , POSITION
+                , CREATED_DATE
+                , RECORD_TYP
+                , CREATED_BY
+                , CREATED_LOC
+                , UPDATED_BY
+                , UPDATED_DATE
+                , UPDATED_LOC
+                )
+            VALUES (
+                @Id
+                , @ProjectId
+                , @Name
+                , @Position
+                , @CreatedAt
+                , 1
+                , 'SYSTEM'
+                , '127.0.0.1'
+                , 'SYSTEM'
+                , @CreatedAt
+                , '127.0.0.1'
+            );
+        ";
+
         await connection.ExecuteAsync(insertColumnSql, column);
 
         return Ok(new ProjectColumnApiResponse
@@ -582,10 +974,17 @@ public class ProjectApiController : ControllerBase
 
         await using var connection = await _context.CreateOpenConnectionAsync();
         const string updateSql = @"
-            UPDATE project_column
-            SET name = @Name
-            WHERE id = @ColumnId AND project_id = @ProjectId
-            RETURNING id AS Id, name AS Name, position AS Position";
+            UPDATE DE_PROJECT_COLUMN
+            SET NAME = @Name
+                , UPDATED_BY = 'SYSTEM'
+                , UPDATED_DATE = CURRENT_TIMESTAMP
+                , UPDATED_LOC = '127.0.0.1'
+            WHERE PROJECT_COLUMN_ID = @ColumnId
+                AND PROJECT_ID = @ProjectId
+                AND STATUS = 1 RETURNING PROJECT_COLUMN_ID AS Id
+                , NAME AS Name
+                , POSITION AS Position;
+        ";
 
         var column = await connection.QuerySingleOrDefaultAsync<ProjectColumnApiResponse>(updateSql, new
         {
@@ -606,9 +1005,15 @@ public class ProjectApiController : ControllerBase
         }
 
         await using var connection = await _context.CreateOpenConnectionAsync();
-        var currentColumnIds = (await connection.QueryAsync<Guid>(
-            "SELECT id FROM project_column WHERE project_id = @ProjectId",
-            new { ProjectId = projectId })).ToList();
+
+        const string orderSql = @"
+            SELECT PROJECT_COLUMN_ID
+            FROM DE_PROJECT_COLUMN
+            WHERE PROJECT_ID = @ProjectId
+                AND STATUS = 1;
+        ";
+
+        var currentColumnIds = (await connection.QueryAsync<Guid>(orderSql, new { ProjectId = projectId })).ToList();
         if (currentColumnIds.Count == 0 && request.ColumnIds.Count == 0)
         {
             return NoContent();
@@ -619,7 +1024,18 @@ public class ProjectApiController : ControllerBase
         }
 
         await using var transaction = await connection.BeginTransactionAsync();
-        const string updatePositionSql = "UPDATE project_column SET position = @Position WHERE id = @ColumnId AND project_id = @ProjectId";
+
+        const string updatePositionSql = @"
+            UPDATE DE_PROJECT_COLUMN
+            SET POSITION = @Position
+                , UPDATED_BY = 'SYSTEM'
+                , UPDATED_DATE = CURRENT_TIMESTAMP
+                , UPDATED_LOC = '127.0.0.1'
+            WHERE PROJECT_COLUMN_ID = @ColumnId
+                AND PROJECT_ID = @ProjectId
+                AND STATUS = 1;
+        ";
+
         for (var position = 0; position < request.ColumnIds.Count; position++)
         {
             await connection.ExecuteAsync(updatePositionSql, new
@@ -641,7 +1057,14 @@ public class ProjectApiController : ControllerBase
     {
         await using var connection = await _context.CreateOpenConnectionAsync();
 
-        const string taskExistsSql = "SELECT COUNT(1) FROM task_item WHERE id = @TaskId AND project_id = @ProjectId";
+        const string taskExistsSql = @"
+            SELECT COUNT(1)
+            FROM DE_TASK_ITEM
+            WHERE TASK_ITEM_ID = @TaskId
+                AND PROJECT_ID = @ProjectId
+                AND STATUS = 1;
+        ";
+
         var taskExists = await connection.ExecuteScalarAsync<int>(taskExistsSql, new { TaskId = taskId, ProjectId = projectId }) > 0;
         if (!taskExists)
         {
@@ -649,10 +1072,15 @@ public class ProjectApiController : ControllerBase
         }
 
         const string collaboratorSql = @"
-            SELECT u.id AS UserId, u.full_name AS FullName, u.email AS Email
-            FROM project_collaborator pc
-            JOIN users u ON u.id = pc.user_id
-            WHERE pc.project_id = @ProjectId AND pc.user_id = @UserId";
+            SELECT U.USER_ID AS UserId
+                , U.FULL_NAME AS FullName
+                , U.EMAIL AS Email
+            FROM DE_PROJECT_COLLABORATOR PC
+            JOIN MM_USER U ON U.USER_ID = PC.USER_ID
+            WHERE PC.PROJECT_ID = @ProjectId
+                AND PC.USER_ID = @UserId
+                AND PC.STATUS = 1;
+        ";
 
         var collaborator = await connection.QuerySingleOrDefaultAsync<TaskAssigneeApiResponse>(collaboratorSql, new
         {
@@ -666,9 +1094,37 @@ public class ProjectApiController : ControllerBase
         }
 
         const string insertSql = @"
-            INSERT INTO task_assignee (task_id, user_id, assigned_at)
-            VALUES (@TaskId, @UserId, @AssignedAt)
-            ON CONFLICT (task_id, user_id) DO NOTHING";
+            INSERT INTO DE_TASK_ASSIGNEE (
+                TASK_ITEM_ID
+                , USER_ID
+                , STATUS
+                , RECORD_TYP
+                , CREATED_BY
+                , CREATED_DATE
+                , CREATED_LOC
+                , UPDATED_BY
+                , UPDATED_DATE
+                , UPDATED_LOC
+                )
+            VALUES (
+                @TaskId
+                , @UserId
+                , 1
+                , 1
+                , 'SYSTEM'
+                , @AssignedAt
+                , '127.0.0.1'
+                , 'SYSTEM'
+                , @AssignedAt
+                , '127.0.0.1'
+            ) ON CONFLICT(TASK_ITEM_ID, USER_ID) DO
+
+            UPDATE
+            SET STATUS = 1
+                , UPDATED_BY = 'SYSTEM'
+                , UPDATED_DATE = @AssignedAt
+                , UPDATED_LOC = '127.0.0.1';
+        ";
 
         await connection.ExecuteAsync(insertSql, new
         {
@@ -678,9 +1134,15 @@ public class ProjectApiController : ControllerBase
         });
 
         const string setPrimaryAssigneeSql = @"
-            UPDATE task_item
-            SET assigned_user_id = COALESCE(assigned_user_id, @UserId), updated_at = @UpdatedAt
-            WHERE id = @TaskId AND project_id = @ProjectId";
+            UPDATE DE_TASK_ITEM
+            SET ASSIGNED_USER_ID = COALESCE(ASSIGNED_USER_ID, @UserId)
+                , UPDATED_DATE = @UpdatedAt
+                , UPDATED_BY = 'SYSTEM'
+                , UPDATED_LOC = '127.0.0.1'
+            WHERE TASK_ITEM_ID = @TaskId
+                AND PROJECT_ID = @ProjectId
+                AND STATUS = 1;
+        ";
 
         await connection.ExecuteAsync(setPrimaryAssigneeSql, new
         {
@@ -699,34 +1161,67 @@ public class ProjectApiController : ControllerBase
         await using var connection = await _context.CreateOpenConnectionAsync();
         await using var transaction = await connection.BeginTransactionAsync();
 
-        const string taskExistsSql = "SELECT COUNT(1) FROM task_item WHERE id = @TaskId AND project_id = @ProjectId";
+        const string taskExistsSql = @"
+            SELECT COUNT(1)
+            FROM DE_TASK_ITEM
+            WHERE TASK_ITEM_ID = @TaskId
+                AND PROJECT_ID = @ProjectId
+                AND STATUS = 1;
+        ";
+
         var taskExists = await connection.ExecuteScalarAsync<int>(taskExistsSql, new { TaskId = taskId, ProjectId = projectId }, transaction) > 0;
         if (!taskExists)
         {
             return NotFound();
         }
 
-        const string ownerSql = "SELECT user_id FROM project WHERE id = @ProjectId";
+        const string ownerSql = @"
+            SELECT USER_ID
+            FROM MM_PROJECT
+            WHERE PROJECT_ID = @ProjectId
+                AND STATUS = 1;
+        ";
+
         var ownerUserId = await connection.ExecuteScalarAsync<Guid?>(ownerSql, new { ProjectId = projectId }, transaction);
         if (ownerUserId == userId)
         {
             return BadRequest("The project owner cannot be removed from a task.");
         }
 
-        const string deleteSql = "DELETE FROM task_assignee WHERE task_id = @TaskId AND user_id = @UserId";
-        var deleted = await connection.ExecuteAsync(deleteSql, new { TaskId = taskId, UserId = userId }, transaction);
+        const string deleteSql = @"
+            UPDATE DE_TASK_ASSIGNEE
+            SET STATUS = 0
+                , UPDATED_BY = 'SYSTEM'
+                , UPDATED_DATE = @UpdatedAt
+                , UPDATED_LOC = '127.0.0.1'
+            WHERE TASK_ITEM_ID = @TaskId
+                AND USER_ID = @UserId
+                AND STATUS = 1;
+        ";
+
+        var deleted = await connection.ExecuteAsync(deleteSql, new { TaskId = taskId, UserId = userId, UpdatedAt = DateTime.UtcNow }, transaction);
         if (deleted == 0)
         {
             return NotFound();
         }
 
         const string updatePrimaryAssigneeSql = @"
-            UPDATE task_item
-            SET assigned_user_id = (
-                    SELECT user_id FROM task_assignee WHERE task_id = @TaskId ORDER BY assigned_at LIMIT 1
-                ),
-                updated_at = @UpdatedAt
-            WHERE id = @TaskId AND project_id = @ProjectId";
+            UPDATE DE_TASK_ITEM
+            SET ASSIGNED_USER_ID = (
+                    SELECT USER_ID
+                    FROM DE_TASK_ASSIGNEE
+                    WHERE TASK_ITEM_ID = @TaskId
+                        AND STATUS = 1
+                    ORDER BY CREATED_DATE
+                    LIMIT 1
+                    )
+                , UPDATED_DATE = @UpdatedAt
+                , UPDATED_BY = 'SYSTEM'
+                , UPDATED_LOC = '127.0.0.1'
+            WHERE TASK_ITEM_ID = @TaskId
+                AND PROJECT_ID = @ProjectId
+                AND STATUS = 1;
+        ";
 
         await connection.ExecuteAsync(updatePrimaryAssigneeSql, new
         {
@@ -749,11 +1244,19 @@ public class ProjectApiController : ControllerBase
         await using var connection = await _context.CreateOpenConnectionAsync();
 
         const string existingSql = @"
-            SELECT ci.id, ci.task_id AS TaskId, ci.label AS Label, ci.is_completed AS IsCompleted,
-                   ci.created_at AS CreatedAt, ci.updated_at AS UpdatedAt
-            FROM task_checklist_item ci
-            JOIN task_item ti ON ti.id = ci.task_id
-            WHERE ci.id = @ItemId AND ci.task_id = @TaskId AND ti.project_id = @ProjectId";
+            SELECT CI.TASK_CHECKLIST_ITEM_ID AS Id
+                , CI.TASK_ITEM_ID AS TaskId
+                , CI.LABEL AS Label
+                , CI.IS_COMPLETED AS IsCompleted
+                , CI.CREATED_DATE AS CreatedAt
+                , CI.UPDATED_DATE AS UpdatedAt
+            FROM DE_TASK_CHECKLIST_ITEM CI
+            JOIN DE_TASK_ITEM TI ON TI.TASK_ITEM_ID = CI.TASK_ITEM_ID
+            WHERE CI.TASK_CHECKLIST_ITEM_ID = @ItemId
+                AND CI.TASK_ITEM_ID = @TaskId
+                AND TI.PROJECT_ID = @ProjectId
+                AND CI.STATUS = 1;
+        ";
 
         var existing = await connection.QuerySingleOrDefaultAsync<TaskChecklistItem>(existingSql, new
         {
@@ -780,9 +1283,16 @@ public class ProjectApiController : ControllerBase
         existing.UpdatedAt = DateTime.UtcNow;
 
         const string updateSql = @"
-            UPDATE task_checklist_item
-            SET label = @Label, is_completed = @IsCompleted, updated_at = @UpdatedAt
-            WHERE id = @Id AND task_id = @TaskId";
+            UPDATE DE_TASK_CHECKLIST_ITEM
+            SET LABEL = @Label
+                , IS_COMPLETED = @IsCompleted
+                , UPDATED_DATE = @UpdatedAt
+                , UPDATED_BY = 'SYSTEM'
+                , UPDATED_LOC = '127.0.0.1'
+            WHERE TASK_CHECKLIST_ITEM_ID = @Id
+                AND TASK_ITEM_ID = @TaskId
+                AND STATUS = 1;
+        ";
 
         await connection.ExecuteAsync(updateSql, existing);
 
@@ -806,10 +1316,15 @@ public class ProjectApiController : ControllerBase
 
         await using var connection = await _context.CreateOpenConnectionAsync();
         const string updateSql = @"
-            UPDATE task_item
-            SET column_id = @ColumnId,
-                updated_at = @UpdatedAt
-            WHERE id = @TaskId AND project_id = @ProjectId";
+            UPDATE DE_TASK_ITEM
+            SET PROJECT_COLUMN_ID = @ColumnId
+                , UPDATED_DATE = @UpdatedAt
+                , UPDATED_BY = 'SYSTEM'
+                , UPDATED_LOC = '127.0.0.1'
+            WHERE TASK_ITEM_ID = @TaskId
+                AND PROJECT_ID = @ProjectId
+                AND STATUS = 1;
+        ";
 
         var rows = await connection.ExecuteAsync(updateSql, new
         {
@@ -832,7 +1347,7 @@ public class ProjectApiController : ControllerBase
     {
         if (string.IsNullOrWhiteSpace(request.Title) || string.IsNullOrWhiteSpace(request.Description)
             || request.ColumnId == Guid.Empty || request.StartDate == null || request.DueDate == null
-            || string.IsNullOrWhiteSpace(request.Priority))
+            || request.Priority == null)
         {
             return BadRequest("Title, description, column, dates, and priority are required.");
         }
@@ -845,22 +1360,34 @@ public class ProjectApiController : ControllerBase
             .Distinct()
             .ToList();
         const string updateTaskSql = @"
-            UPDATE task_item
-            SET title = @Title, description = @Description, column_id = @ColumnId,
-                board_type = @BoardType, assigned_user_id = @AssignedUserId,
-                start_date = @StartDate, due_date = @DueDate, priority = @Priority,
-                category = @Category, updated_at = @UpdatedAt
-            WHERE id = @TaskId AND project_id = @ProjectId";
+            UPDATE DE_TASK_ITEM
+            SET TITLE = @Title
+                , DESCRIPTION = @Description
+                , PROJECT_COLUMN_ID = @ColumnId
+                , BOARD_TYPE = @BoardType
+                , ASSIGNED_USER_ID = @AssignedUserId
+                , START_DATE = @StartDate
+                , DUE_DATE = @DueDate
+                , PRIORITY = @Priority
+                , CATEGORY = @Category
+                , UPDATED_DATE = @UpdatedAt
+                , UPDATED_BY = 'SYSTEM'
+                , UPDATED_LOC = '127.0.0.1'
+            WHERE TASK_ITEM_ID = @TaskId
+                AND PROJECT_ID = @ProjectId
+                AND STATUS = 1;
+        ";
+
         var rows = await connection.ExecuteAsync(updateTaskSql, new
         {
-            Title = request.Title.Trim(),
-            Description = request.Description.Trim(),
+            Title = request.Title?.Trim() ?? string.Empty,
+            Description = request.Description?.Trim() ?? string.Empty,
             BoardType = string.IsNullOrWhiteSpace(request.BoardType) ? null : request.BoardType.Trim(),
             request.ColumnId,
             AssignedUserId = assigneeIds.FirstOrDefault() == Guid.Empty ? null : (Guid?)assigneeIds.First(),
             request.StartDate,
             request.DueDate,
-            Priority = request.Priority.Trim(),
+            Priority = request.Priority,
             Category = request.TagId?.ToString(),
             UpdatedAt = updatedAt,
             TaskId = taskId,
@@ -871,194 +1398,54 @@ public class ProjectApiController : ControllerBase
             return NotFound();
         }
 
-        await connection.ExecuteAsync("DELETE FROM task_assignee WHERE task_id = @TaskId", new { TaskId = taskId }, transaction);
+        const string deleteTaskSql = @"
+            UPDATE DE_TASK_ASSIGNEE
+            SET STATUS = 0
+                , UPDATED_BY = 'SYSTEM'
+                , UPDATED_DATE = @UpdatedAt
+                , UPDATED_LOC = '127.0.0.1'
+            WHERE TASK_ITEM_ID = @TaskId
+                AND STATUS = 1;
+        ";
+        // Soft-delete all current assignees for this task, then upsert the new set
+        await connection.ExecuteAsync(deleteTaskSql, new { TaskId = taskId, UpdatedAt = updatedAt }, transaction);
         foreach (var userId in assigneeIds)
         {
-            await connection.ExecuteAsync(
-                "INSERT INTO task_assignee (task_id, user_id, assigned_at) VALUES (@TaskId, @UserId, @AssignedAt)",
-                new { TaskId = taskId, UserId = userId, AssignedAt = updatedAt }, transaction);
+            const string sql = @"
+                INSERT INTO DE_TASK_ASSIGNEE (
+                    TASK_ITEM_ID
+                    , USER_ID
+                    , STATUS
+                    , RECORD_TYP
+                    , CREATED_BY
+                    , CREATED_DATE
+                    , CREATED_LOC
+                    , UPDATED_BY
+                    , UPDATED_DATE
+                    , UPDATED_LOC
+                    )
+                VALUES (
+                    @TaskId
+                    , @UserId
+                    , 1
+                    , 1
+                    , 'SYSTEM'
+                    , @AssignedAt
+                    , '127.0.0.1'
+                    , 'SYSTEM'
+                    , @AssignedAt
+                    , '127.0.0.1'
+                ) ON CONFLICT(TASK_ITEM_ID, USER_ID) DO
+
+                UPDATE
+                SET STATUS = 1
+                    , UPDATED_BY = 'SYSTEM'
+                    , UPDATED_DATE = @AssignedAt
+                    , UPDATED_LOC = '127.0.0.1';
+            ";
+
+            await connection.ExecuteAsync(sql, new { TaskId = taskId, UserId = userId, AssignedAt = updatedAt }, transaction);
         }
-
-        await connection.ExecuteAsync("DELETE FROM task_item_tag WHERE task_id = @TaskId", new { TaskId = taskId }, transaction);
-        if (request.TagId.HasValue)
-        {
-            await connection.ExecuteAsync(
-                "INSERT INTO task_item_tag (task_id, tag_id) VALUES (@TaskId, @TagId)",
-                new { TaskId = taskId, TagId = request.TagId.Value }, transaction);
-        }
-
-        await transaction.CommitAsync();
-        return NoContent();
-    }
-
-    [HttpDelete("{projectId:guid}/tasks/{taskId:guid}")]
-    public async Task<IActionResult> DeleteTask(Guid projectId, Guid taskId)
-    {
-        await using var connection = await _context.CreateOpenConnectionAsync();
-        const string deleteSql = "DELETE FROM task_item WHERE id = @TaskId AND project_id = @ProjectId";
-        var rows = await connection.ExecuteAsync(deleteSql, new { TaskId = taskId, ProjectId = projectId });
-
-        if (rows == 0)
-        {
-            return NotFound();
-        }
-
-        return NoContent();
-    }
-
-    [HttpPut("{id:guid}")]
-    public async Task<IActionResult> Update(Guid id, Project project)
-    {
-        if (id != project.Id)
-        {
-            return BadRequest();
-        }
-
-        project.UpdatedAt = DateTime.UtcNow;
-
-        await using var connection = await _context.CreateOpenConnectionAsync();
-
-        const string updateSql = "UPDATE project SET name = @Name, description = @Description, updated_at = @UpdatedAt WHERE id = @Id";
-
-        var rows = await connection.ExecuteAsync(updateSql, new
-        {
-            project.Name,
-            project.Description,
-            project.UpdatedAt,
-            Id = id,
-        });
-
-        if (rows == 0)
-        {
-            return NotFound();
-        }
-
-        return NoContent();
-    }
-
-    [HttpDelete("{id:guid}")]
-    public async Task<IActionResult> Delete(Guid id)
-    {
-        await using var connection = await _context.CreateOpenConnectionAsync();
-
-        const string deleteSql = "DELETE FROM project WHERE id = @Id";
-
-        var rows = await connection.ExecuteAsync(deleteSql, new { Id = id });
-        if (rows == 0)
-        {
-            return NotFound();
-        }
-
-        return NoContent();
-    }
-
-    [HttpPost("{id:guid}/collaborators")]
-    public async Task<IActionResult> AddCollaborator(Guid id, AddProjectCollaboratorRequest request)
-    {
-        var userIdValue = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
-            ?? User.FindFirst(JwtRegisteredClaimNames.Sub)?.Value;
-        if (!Guid.TryParse(userIdValue, out var currentUserId))
-        {
-            return Unauthorized();
-        }
-
-        await using var connection = await _context.CreateOpenConnectionAsync();
-
-        const string ownerSql = "SELECT user_id FROM project WHERE id = @Id";
-        var ownerUserId = await connection.QuerySingleOrDefaultAsync<Guid?>(ownerSql, new { Id = id });
-        if (!ownerUserId.HasValue)
-        {
-            return NotFound();
-        }
-        if (ownerUserId.Value != currentUserId)
-        {
-            return Forbid();
-        }
-
-        const string userExistsSql = "SELECT COUNT(1) > 0 FROM users WHERE id = @UserId";
-        var userExists = await connection.ExecuteScalarAsync<bool>(userExistsSql, new { request.UserId });
-        if (!userExists)
-        {
-            return BadRequest("User not found.");
-        }
-
-        const string collaboratorExistsSql = "SELECT COUNT(1) FROM project_collaborator WHERE project_id = @ProjectId AND user_id = @UserId";
-        var existingCollaborator = await connection.ExecuteScalarAsync<int>(collaboratorExistsSql, new { ProjectId = id, request.UserId });
-        if (existingCollaborator > 0)
-        {
-            return Conflict("Collaborator already added.");
-        }
-
-        const string insertCollaboratorSql = "INSERT INTO project_collaborator (project_id, user_id, role, joined_at) VALUES (@ProjectId, @UserId, @Role, @JoinedAt)";
-        var inserted = await connection.ExecuteAsync(insertCollaboratorSql, new { ProjectId = id, request.UserId, request.Role, JoinedAt = DateTime.UtcNow });
-        if (inserted == 0)
-        {
-            return StatusCode(500);
-        }
-
-        return NoContent();
-    }
-
-    [HttpDelete("{id:guid}/collaborators/{userId:guid}")]
-    public async Task<IActionResult> RemoveCollaborator(Guid id, Guid userId)
-    {
-        var userIdValue = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
-            ?? User.FindFirst(JwtRegisteredClaimNames.Sub)?.Value;
-        if (!Guid.TryParse(userIdValue, out var currentUserId))
-        {
-            return Unauthorized();
-        }
-
-        await using var connection = await _context.CreateOpenConnectionAsync();
-        const string ownerSql = "SELECT user_id FROM project WHERE id = @Id";
-        var ownerUserId = await connection.QuerySingleOrDefaultAsync<Guid?>(ownerSql, new { Id = id });
-        if (!ownerUserId.HasValue)
-        {
-            return NotFound();
-        }
-        if (ownerUserId.Value != currentUserId)
-        {
-            return Forbid();
-        }
-        if (ownerUserId.Value == userId)
-        {
-            return BadRequest("The project owner cannot be removed as a collaborator.");
-        }
-
-        await using var transaction = await connection.BeginTransactionAsync();
-        const string deleteCollaboratorSql = "DELETE FROM project_collaborator WHERE project_id = @ProjectId AND user_id = @UserId";
-        var deleted = await connection.ExecuteAsync(deleteCollaboratorSql, new { ProjectId = id, UserId = userId }, transaction);
-        if (deleted == 0)
-        {
-            return NotFound();
-        }
-
-        const string removeTaskAssigneeSql = @"
-            DELETE FROM task_assignee ta
-            USING task_item ti
-            WHERE ta.task_id = ti.id
-              AND ti.project_id = @ProjectId
-              AND ta.user_id = @UserId";
-        await connection.ExecuteAsync(removeTaskAssigneeSql, new { ProjectId = id, UserId = userId }, transaction);
-
-        const string updatePrimaryAssigneeSql = @"
-            UPDATE task_item ti
-            SET assigned_user_id = (
-                    SELECT ta.user_id
-                    FROM task_assignee ta
-                    WHERE ta.task_id = ti.id
-                    ORDER BY ta.assigned_at
-                    LIMIT 1
-                ),
-                updated_at = @UpdatedAt
-            WHERE ti.project_id = @ProjectId
-              AND ti.assigned_user_id = @UserId";
-        await connection.ExecuteAsync(updatePrimaryAssigneeSql, new
-        {
-            ProjectId = id,
-            UserId = userId,
-            UpdatedAt = DateTime.UtcNow,
-        }, transaction);
 
         await transaction.CommitAsync();
         return NoContent();
@@ -1151,7 +1538,7 @@ public class ProjectApiResponse
 {
     public Guid Id { get; set; }
     public Guid UserId { get; set; }
-    public string Name { get; set; } = string.Empty;
+    public string Name { get; set; }
     public string? Description { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
@@ -1164,7 +1551,7 @@ public class ProjectApiResponse
 public class ProjectColumnApiResponse
 {
     public Guid Id { get; set; }
-    public string Name { get; set; } = string.Empty;
+    public string Name { get; set; }
     public int Position { get; set; }
 }
 
@@ -1191,29 +1578,29 @@ public class MoveTaskRequest
 public class ProjectTagApiResponse
 {
     public Guid Id { get; set; }
-    public string Name { get; set; } = string.Empty;
+    public string Name { get; set; }
     public string? Color { get; set; }
 }
 
 public class ProjectCollaboratorApiResponse
 {
     public Guid UserId { get; set; }
-    public string Role { get; set; } = string.Empty;
-    public string FullName { get; set; } = string.Empty;
-    public string Email { get; set; } = string.Empty;
+    public string Role { get; set; }
+    public string FullName { get; set; }
+    public string Email { get; set; }
 }
 
 public sealed class CreateTaskItemRequest
 {
-    public string Title { get; set; } = string.Empty;
+    public string Title { get; set; }
     public string? Description { get; set; }
-    public string BoardType { get; set; } = string.Empty;
+    public string BoardType { get; set; }
     public Guid ColumnId { get; set; }
     public Guid? AssignedUserId { get; set; }
     public List<Guid>? AssignedUserIds { get; set; }
     public DateTime? StartDate { get; set; }
     public DateTime? DueDate { get; set; }
-    public string Priority { get; set; } = string.Empty;
+    public TaskPriority Priority { get; set; }
     public Guid? TagId { get; set; }
 }
 
@@ -1226,20 +1613,20 @@ public sealed class UpdateTaskDetailsRequest
     public List<Guid>? AssignedUserIds { get; set; }
     public DateTime? StartDate { get; set; }
     public DateTime? DueDate { get; set; }
-    public string? Priority { get; set; }
+    public TaskPriority? Priority { get; set; }
     public Guid? TagId { get; set; }
 }
 
 public class TaskItemApiResponse
 {
     public Guid Id { get; set; }
-    public string Title { get; set; } = string.Empty;
+    public string Title { get; set; }
     public string? Description { get; set; }
     public Guid ColumnId { get; set; }
     public string? AssignedUserName { get; set; }
     public List<TaskAssigneeApiResponse> Assignees { get; set; } = [];
     public DateTime? DueDate { get; set; }
-    public string Priority { get; set; } = string.Empty;
+    public TaskPriority Priority { get; set; }
     public List<ProjectTagApiResponse> Tags { get; set; } = [];
 }
 
@@ -1249,14 +1636,14 @@ public sealed class TaskTagRow
     public Guid TaskId { get; init; }
     public Guid TagId { get; init; }
     public Guid Id { get; init; }
-    public string Name { get; init; } = string.Empty;
+    public string Name { get; init; }
     public string? Color { get; init; }
 }
 
 public sealed class TaskDetailRow
 {
     public Guid Id { get; init; }
-    public string Title { get; init; } = string.Empty;
+    public string Title { get; init; }
     public string? Description { get; init; }
     public Guid ProjectId { get; init; }
     public Guid ColumnId { get; init; }
@@ -1266,7 +1653,7 @@ public sealed class TaskDetailRow
     public string? AssignedUserEmail { get; init; }
     public DateTime? StartDate { get; init; }
     public DateTime? DueDate { get; init; }
-    public string? Priority { get; init; }
+    public TaskPriority? Priority { get; init; }
     public string? Category { get; init; }
     public DateTime CreatedAt { get; init; }
     public DateTime UpdatedAt { get; init; }
@@ -1276,12 +1663,12 @@ public sealed class TaskDetailRow
 public sealed class TaskDetailApiResponse
 {
     public Guid Id { get; set; }
-    public string Title { get; set; } = string.Empty;
+    public string Title { get; set; }
     public string? Description { get; set; }
     public Guid ProjectId { get; set; }
-    public string ProjectName { get; set; } = string.Empty;
+    public string ProjectName { get; set; }
     public Guid ColumnId { get; set; }
-    public string ColumnName { get; set; } = string.Empty;
+    public string ColumnName { get; set; }
     public string? BoardType { get; set; }
     public Guid? AssignedUserId { get; set; }
     public string? AssignedUserName { get; set; }
@@ -1289,7 +1676,7 @@ public sealed class TaskDetailApiResponse
     public List<TaskAssigneeApiResponse> Assignees { get; set; } = [];
     public DateTime? StartDate { get; set; }
     public DateTime? DueDate { get; set; }
-    public string Priority { get; set; } = string.Empty;
+    public TaskPriority Priority { get; set; }
     public string? Category { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
@@ -1302,7 +1689,7 @@ public sealed class TaskDetailApiResponse
 public sealed class TaskChecklistItemApiResponse
 {
     public Guid Id { get; set; }
-    public string Label { get; set; } = string.Empty;
+    public string Label { get; set; }
     public bool IsCompleted { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
@@ -1311,7 +1698,7 @@ public sealed class TaskChecklistItemApiResponse
 public sealed class TaskAttachmentApiResponse
 {
     public Guid Id { get; set; }
-    public string FileName { get; set; } = string.Empty;
+    public string FileName { get; set; }
     public string? FileType { get; set; }
     public long FileSize { get; set; }
     public DateTime UploadedAt { get; set; }
@@ -1320,13 +1707,13 @@ public sealed class TaskAttachmentApiResponse
 public sealed class TaskAssigneeApiResponse
 {
     public Guid UserId { get; set; }
-    public string FullName { get; set; } = string.Empty;
-    public string Email { get; set; } = string.Empty;
+    public string FullName { get; set; }
+    public string Email { get; set; }
 }
 
 public sealed class CreateChecklistItemRequest
 {
-    public string Label { get; set; } = string.Empty;
+    public string Label { get; set; }
 }
 
 public sealed class UpdateChecklistItemRequest

@@ -14,14 +14,14 @@ public class TaskController : Controller
     {
         _context = context;
     }
-
+    
     [HttpGet("/task")]
     public async Task<IActionResult> Index(Guid? id)
     { 
         await using var connection = await _context.CreateOpenConnectionAsync();
 
-        const string projectByIdSql = "SELECT id, user_id AS UserId, name, description, created_at AS CreatedAt, updated_at AS UpdatedAt FROM project WHERE id = @Id";
-        const string firstProjectSql = "SELECT id, user_id AS UserId, name, description, created_at AS CreatedAt, updated_at AS UpdatedAt FROM project ORDER BY created_at LIMIT 1";
+        const string projectByIdSql = "SELECT \"PROJECT_ID\" AS Id, \"USER_ID\" AS UserId, \"NAME\", \"DESCRIPTION\", \"CREATED_DATE\" AS CreatedAt, \"UPDATED_DATE\" AS UpdatedAt FROM \"MM_PROJECT\" WHERE \"PROJECT_ID\" = @Id;";
+        const string firstProjectSql = "SELECT TOP 1 \"PROJECT_ID\" AS Id, \"USER_ID\" AS UserId, \"NAME\", \"DESCRIPTION\", \"CREATED_DATE\" AS CreatedAt, \"UPDATED_DATE\" AS UpdatedAt FROM \"MM_PROJECT\" ORDER BY \"CREATED_DATE\";";
 
         var project = id.HasValue
             ? await connection.QuerySingleOrDefaultAsync<Project>(projectByIdSql, new { Id = id.Value })
@@ -33,15 +33,15 @@ public class TaskController : Controller
         }
 
         project.Columns = (await connection.QueryAsync<ProjectColumn>(
-            "SELECT id, project_id AS ProjectId, name, position, created_at AS CreatedAt FROM project_column WHERE project_id = @ProjectId ORDER BY position",
+            "SELECT \"PROJECT_COLUMN_ID\" AS Id, \"PROJECT_ID\" AS ProjectId, \"NAME\", \"POSITION\", \"CREATED_DATE\" AS CreatedAt FROM \"DE_PROJECT_COLUMN\" WHERE \"PROJECT_ID\" = @ProjectId ORDER BY \"POSITION\";",
             new { ProjectId = project.Id })).ToList();
 
         project.Tags = (await connection.QueryAsync<ProjectTag>(
-            "SELECT id, project_id AS ProjectId, name, color, created_at AS CreatedAt FROM project_tag WHERE project_id = @ProjectId",
+            "SELECT \"PROJECT_TAG_ID\" AS Id, \"PROJECT_ID\" AS ProjectId, \"NAME\", \"COLOR\", \"CREATED_DATE\" AS CreatedAt FROM \"MM_PROJECT_TAG\" WHERE \"PROJECT_ID\" = @ProjectId;",
             new { ProjectId = project.Id })).ToList();
 
         project.Collaborators = (await connection.QueryAsync<ProjectCollaborator, User, ProjectCollaborator>(
-            "SELECT pc.project_id AS ProjectId, pc.user_id AS UserId, pc.role AS Role, pc.joined_at AS JoinedAt, u.id AS Id, u.full_name AS FullName, u.email AS Email, u.created_at AS CreatedAt FROM project_collaborator pc JOIN users u ON u.id = pc.user_id WHERE pc.project_id = @ProjectId",
+            "SELECT PC.\"PROJECT_ID\" AS ProjectId, PC.\"USER_ID\" AS UserId, PC.\"ROLE\" AS Role, PC.\"CREATED_DATE\" AS JoinedAt, U.\"USER_ID\" AS Id, U.\"FULL_NAME\" AS FullName, U.\"EMAIL\" AS Email, U.\"CREATED_DATE\" AS CreatedAt FROM \"DE_PROJECT_COLLABORATOR\" PC JOIN \"MM_USER\" U ON U.\"USER_ID\" = PC.\"USER_ID\" WHERE PC.\"PROJECT_ID\" = @ProjectId;",
             (collaborator, user) =>
             {
                 collaborator.User = user;
@@ -51,7 +51,7 @@ public class TaskController : Controller
             splitOn: "Id")).ToList();
 
         project.Tasks = (await connection.QueryAsync<TaskItem>(
-            "SELECT id, title, description, project_id AS ProjectId, column_id AS ColumnId, assigned_user_id AS AssignedUserId, start_date AS StartDate, due_date AS DueDate, priority, created_at AS CreatedAt, updated_at AS UpdatedAt FROM task_item WHERE project_id = @ProjectId",
+            "SELECT \"TASK_ITEM_ID\" AS Id, \"TITLE\", \"DESCRIPTION\", \"PROJECT_ID\" AS ProjectId, \"PROJECT_COLUMN_ID\" AS ColumnId, \"ASSIGNED_USER_ID\" AS AssignedUserId, \"START_DATE\" AS StartDate, \"DUE_DATE\" AS DueDate, \"PRIORITY\", \"CREATED_DATE\" AS CreatedAt, \"UPDATED_DATE\" AS UpdatedAt FROM \"DE_TASK_ITEM\" WHERE \"PROJECT_ID\" = @ProjectId;",
             new { ProjectId = project.Id })).ToList();
 
         return View(project);

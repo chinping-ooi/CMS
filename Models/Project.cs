@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using CMS.Enum;
 
 namespace CMS.Models
 {
@@ -8,6 +9,7 @@ namespace CMS.Models
         public Guid UserId { get; set; }
         public string Name { get; set; }
         public string? Description { get; set; }
+        public int Status { get; set; } = 1;
         public DateTime CreatedAt { get; set; }
         public DateTime UpdatedAt { get; set; }
         public ICollection<ProjectColumn> Columns { get; set; } = new List<ProjectColumn>();

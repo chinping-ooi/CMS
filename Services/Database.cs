@@ -1,6 +1,7 @@
 using System.Data;
 using Microsoft.Extensions.Configuration;
-using Npgsql;
+using Microsoft.Data.SqlClient;
+// using Npgsql;
 
 namespace CMS.Services;
 
@@ -21,12 +22,12 @@ public sealed class DatabaseConnectionService
             throw new InvalidOperationException($"Connection string '{name}' is not configured.");
         }
 
-        return new NpgsqlConnection(connectionString);
+        return new SqlConnection(connectionString);
     }
 
-    public async Task<NpgsqlConnection> CreateOpenConnectionAsync(string name = "DefaultConnection")
+    public async Task<SqlConnection> CreateOpenConnectionAsync(string name = "DefaultConnection")
     {
-        var connection = (NpgsqlConnection)CreateConnection(name);
+        var connection = (SqlConnection)CreateConnection(name);
         await connection.OpenAsync();
         return connection;
     }
