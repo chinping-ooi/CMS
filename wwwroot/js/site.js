@@ -20,50 +20,55 @@ window.formValidation = {
 	validateField: function (input) {
 		var $input = $(input);
 		var value = $input.val().trim();
-		var isEmail = $input.attr('type') === 'email';
-		var requiredMessage = $input.attr('data-validation-message') || 'This field is required.';
 
 		if (!value) {
-			this.setFieldError(input, requiredMessage);
+			this.setFieldError(input, 'This field is required.');
 			return false;
 		}
 
-		if (isEmail) {
-			var atIndex = value.indexOf(String.fromCharCode(64));
-			var dotAfterAtIndex = value.indexOf('.', atIndex + 2);
-			if (atIndex < 1 || value.lastIndexOf(String.fromCharCode(64)) !== atIndex || dotAfterAtIndex === -1 || dotAfterAtIndex === value.length - 1) {
-				this.setFieldError(input, 'Please enter a valid email address.');
-				return false;
-			}
-		}
+		if ($input.attr('type') === 'email') {
+            var emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!emailRegex.test(value)) {
+                this.setFieldError(input, 'Please enter a valid email address.');
+                return false;
+            }
+        }
 
 		this.clearFieldError(input);
 		return true;
 	},
 
+	validateForm: function (form) {
+        var isValid = true;
+
+        $(form).find('input[required], select[required], textarea[required]').each(function () {
+			if (!window.formValidation.validateField(this)) {
+				isValid = false;
+			}
+		});
+
+        return isValid;
+    },
+
 	setup: function (formId) {
 		var $form = $('#' + formId);
 		if (!$form.length) return;
 
-		$form.find('input[required], select[required], textarea[required]').each(function () {
-			var $input = $(this);
-			$input.on('input blur', function () {
-				window.formValidation.validateField(this);
-			});
-		});
+		$form.on(
+            'input blur',
+            'input[required], select[required], textarea[required]',
+            function () {
+                window.formValidation.validateField(this);
+            }
+        );
 
 		$form.on('submit', function (event) {
-			var isValid = true;
-			$form.find('input[required], select[required], textarea[required]').each(function () {
-				if (!window.formValidation.validateField(this)) {
-					isValid = false;
-				}
-			});
-
-			if (!isValid) {
-				event.preventDefault();
-			}
-		});
+            if (!window.formValidation.validateForm(this)) {
+                event.preventDefault();
+                event.stopPropagation();
+                return false;
+            }
+        });
 	}
 };
 

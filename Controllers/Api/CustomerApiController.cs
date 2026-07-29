@@ -21,7 +21,7 @@ public class CustomerApiController : ControllerBase
     public async Task<ActionResult<IEnumerable<Customer>>> GetAll()
     {
         await using var connection = await _context.CreateOpenConnectionAsync();
-        var sql = "SELECT customer_id, name, email, phone, address, city, state, postal_code, country, record_typ, customer_status, updated_by, updated_date FROM customer";
+        var sql = "SELECT customer_id, name, email, phone, address, city, state, postal_code, country, record_typ, customer_status, updated_by, updated_date, created_by, created_date, created_loc FROM customer";
         var customer = await connection.QueryAsync<Customer>(sql);
         return Ok(customer);
     }
@@ -32,7 +32,7 @@ public class CustomerApiController : ControllerBase
     // {
     //     await using var connection = await _context.CreateOpenConnectionAsync();
 
-    //     var sql = "SELECT customer_id, name, email, phone, address, city, state, postal_code, country, record_typ, customer_status, updated_by, updated_date FROM customer";
+    //     var sql = "SELECT customer_id, name, email, phone, address, city, state, postal_code, country, record_typ, customer_status, updated_by, updated_date, created_by, created_date, created_loc FROM customer";
     //     var customers = await connection.QueryAsync<Customer>(sql);
 
     //     return PartialView("_CustomerRows", customers);
@@ -45,7 +45,7 @@ public class CustomerApiController : ControllerBase
         if (id == 0) return BadRequest();
 
         await using var connection = await _context.CreateOpenConnectionAsync();
-        var sql = "SELECT customer_id, name, email, phone, address, city, state, postal_code, country, record_typ, customer_status, updated_by, updated_date FROM customer WHERE customer_id = @Id";
+        var sql = "SELECT customer_id, name, email, phone, address, city, state, postal_code, country, record_typ, customer_status, updated_by, updated_date, created_by, created_date, created_loc FROM customer WHERE customer_id = @Id";
         var customer = await connection.QuerySingleOrDefaultAsync<Customer>(sql, new { Id = id });
 
         if (customer == null) return NotFound();
@@ -55,6 +55,7 @@ public class CustomerApiController : ControllerBase
 
     // POST: api/customer
     [HttpPost]
+    [ValidateAntiForgeryToken]
     public async Task<ActionResult<Customer>> Create(Customer customer)
     {
         await using var connection = await _context.CreateOpenConnectionAsync();
@@ -69,6 +70,7 @@ public class CustomerApiController : ControllerBase
 
     // PUT: api/customer/{id}
     [HttpPut("{id}")]
+    [ValidateAntiForgeryToken]
     public async Task<IActionResult> Update(int id, Customer customer)
     {
         if (id != customer.Customer_Id) return BadRequest();
@@ -84,6 +86,7 @@ public class CustomerApiController : ControllerBase
 
     // DELETE: api/customer/{id}
     [HttpDelete("{id}")]
+    [ValidateAntiForgeryToken]
     public async Task<IActionResult> Delete(int id)
     {
         if (id == 0) return BadRequest();

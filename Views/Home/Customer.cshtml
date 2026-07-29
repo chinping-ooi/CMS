@@ -225,39 +225,39 @@
             <form id="editCustomerForm" asp-action="Edit" asp-controller="Customer" method="post" novalidate>
                 @Html.AntiForgeryToken()
                 <div class="modal-body">
-                    <input type="hidden" name="Customer_Id" id="editCustomerId" />
-                    <input type="hidden" name="Created_By" id="editCreatedBy" />
-                    <input type="hidden" name="Created_Date" id="editCreatedDate" />
-                    <input type="hidden" name="Created_Loc" id="editCreatedLoc" />
-                    <input type="hidden" name="Updated_By" id="editUpdatedBy" value="Admin" />
-                    <input type="hidden" name="Updated_Date" id="editUpdatedDate" />
-                    <input type="hidden" name="Updated_Loc" id="editUpdatedLoc" />
+                    <input type="hidden" name="Customer_Id" id="customer_id" />
+                    <input type="hidden" name="Created_By" id="created_by" />
+                    <input type="hidden" name="Created_Date" id="created_date" />
+                    <input type="hidden" name="Created_Loc" id="created_loc" />
+                    <input type="hidden" name="Updated_By" id="updated_by" value="Admin" />
+                    <input type="hidden" name="Updated_Date" id="updated_date" />
+                    <input type="hidden" name="Updated_Loc" id="updated_loc" />
 
                     <div class="row g-3">
                         <div class="col-md-6">
                             <label class="form-label fw-semibold">Company Name <span class="text-danger">*</span>
                             </label>
-                            <input type="text" name="Name" id="editName" class="form-control" required
+                            <input type="text" name="Name" id="name" class="form-control" required
                                    data-validation-message="Company name is required.">
                             <div class="invalid-feedback mt-1">Company name is required.</div>
                         </div>
                         <div class="col-md-6">
                             <label class="form-label fw-semibold">Email Address <span class="text-danger">*</span>
                             </label>
-                            <input type="email" name="Email" id="editEmail" class="form-control" required
+                            <input type="email" name="Email" id="email" class="form-control" required
                                    data-validation-message="Email address is required.">
                             <div class="invalid-feedback mt-1">Email address is required.</div>
                         </div>
 
                         <div class="col-md-6">
                             <label class="form-label fw-semibold">Phone Number</label>
-                            <input type="text" name="Phone" id="editPhone" class="form-control" required
+                            <input type="text" name="Phone" id="phone" class="form-control" required
                                    data-validation-message="Phone number is required.">
                             <div class="invalid-feedback mt-1">Phone number is required.</div>
                         </div>
                         <div class="col-md-6">
                             <label class="form-label fw-semibold">Customer Status</label>
-                            <select name="Customer_Status" id="editCustomerStatus" class="form-select">
+                            <select name="Customer_Status" id="customer_status" class="form-select">
                                 <option value="Active">Active</option>
                                 <option value="Pending">Pending</option>
                                 <option value="Inactive">Inactive</option>
@@ -265,7 +265,7 @@
                         </div>
                         <div class="col-md-6">
                             <label class="form-label fw-semibold">Record Type</label>
-                            <select name="Record_Typ" id="editRecordTyp" class="form-select">
+                            <select name="Record_Typ" id="record_typ" class="form-select">
                                 <option value="1">Standard (1)</option>
                                 <option value="2">VIP (2)</option>
                                 <option value="3">Corporate (3)</option>
@@ -273,25 +273,25 @@
                         </div>
                         <div class="col-md-6">
                             <label class="form-label fw-semibold">Country</label>
-                            <input type="text" name="Country" id="editCountry" class="form-control">
+                            <input type="text" name="Country" id="country" class="form-control">
                         </div>
 
                         <div class="col-12">
                             <label class="form-label fw-semibold">Street Address</label>
-                            <input type="text" name="Address" id="editAddress" class="form-control">
+                            <input type="text" name="Address" id="address" class="form-control">
                         </div>
 
                         <div class="col-md-4">
                             <label class="form-label fw-semibold">City</label>
-                            <input type="text" name="City" id="editCity" class="form-control">
+                            <input type="text" name="City" id="city" class="form-control">
                         </div>
                         <div class="col-md-4">
                             <label class="form-label fw-semibold">State / Province</label>
-                            <input type="text" name="State" id="editState" class="form-control">
+                            <input type="text" name="State" id="state" class="form-control">
                         </div>
                         <div class="col-md-4">
                             <label class="form-label fw-semibold">Postal Code</label>
-                            <input type="text" name="Postal_Code" id="editPostalCode" class="form-control">
+                            <input type="text" name="Postal_Code" id="postal_code" class="form-control">
                         </div>
                     </div>
                 </div>
@@ -309,9 +309,22 @@
 
 @section Scripts {
     @Html.AntiForgeryToken()
-    <script>
+    <script>        
         $(document).ready(function () {
-            // loadCustomers();
+            loadCustomers();
+
+            $('#searchInput').on('keyup', function () {
+                var term = $(this).val().toLowerCase();
+                $('#customerTableBody tr:not(#noDataRow)').each(function () {
+                    var rowText = $(this).text().toLowerCase();
+                    $(this).toggle(rowText.indexOf(term) >= 0);
+                });
+            });
+
+            if (window.formValidation) {
+                window.formValidation.setup('addCustomerForm');
+                window.formValidation.setup('editCustomerForm');
+            }
         });
 
         function loadCustomers() {
@@ -380,25 +393,6 @@
                 }
             });
         }
-            
-        let editModal;
-
-        $(document).ready(function () {
-            editModal = new bootstrap.Modal(document.getElementById('editModal'));
-
-            $('#searchInput').on('keyup', function () {
-                var term = $(this).val().toLowerCase();
-                $('#customerTableBody tr:not(#noDataRow)').each(function () {
-                    var rowText = $(this).text().toLowerCase();
-                    $(this).toggle(rowText.indexOf(term) >= 0);
-                });
-            });
-
-            if (window.formValidation) {
-                window.formValidation.setup('addCustomerForm');
-                window.formValidation.setup('editCustomerForm');
-            }
-        });
 
         function deleteCustomer(id) {
             if (!id) return;
@@ -414,15 +408,15 @@
                 }
 
                 var token = $('input[name="__RequestVerificationToken"]').first().val();
-
+                
                 $.ajax({
-                    url: `/Customer/Delete/${id}`,
-                    type: 'POST',
+                    url: `/api/customer/${id}`,
+                    type: 'DELETE',
                     data: {
                         __RequestVerificationToken: token
                     },
                     success: function () {
-                        window.location.reload();
+                        loadCustomers();
                     },
                     error: function () {
                         window.showError({
@@ -435,7 +429,6 @@
             });
         }
 
-        // Open and Populate Modify (Edit) Modal
         function openEditModal(id) {
             if (!id) return;
 
@@ -444,25 +437,14 @@
                 type: 'GET',
                 dataType: 'json',
                 success: function (customer) {
-                    document.getElementById('editCustomerId').value = customer.customerId || customer.customer_Id || customer.customer_id || customer.Customer_Id || '';
-                    document.getElementById('editName').value = customer.name || customer.Name || '';
-                    document.getElementById('editEmail').value = customer.email || customer.Email || '';
-                    document.getElementById('editPhone').value = customer.phone || customer.Phone || '';
-                    document.getElementById('editAddress').value = customer.address || customer.Address || '';
-                    document.getElementById('editCity').value = customer.city || customer.City || '';
-                    document.getElementById('editState').value = customer.state || customer.State || '';
-                    document.getElementById('editPostalCode').value = customer.postalCode || customer.postal_Code || customer.Postal_Code || '';
-                    document.getElementById('editCountry').value = customer.country || customer.Country || '';
-                    document.getElementById('editCustomerStatus').value = customer.customerStatus || customer.customer_Status || customer.Customer_Status || 'Active';
-                    document.getElementById('editRecordTyp').value = customer.recordTyp || customer.record_Typ || customer.Record_Typ || 1;
-                    document.getElementById('editCreatedBy').value = customer.createdBy || customer.created_By || customer.Created_By || 'Admin';
-                    document.getElementById('editCreatedDate').value = customer.createdDate || customer.created_Date || customer.Created_Date || new Date().toISOString();
-                    document.getElementById('editCreatedLoc').value = customer.createdLoc || customer.created_Loc || customer.Created_Loc || '';
-                    document.getElementById('editUpdatedBy').value = customer.updatedBy || customer.updated_By || customer.Updated_By || 'Admin';
-                    document.getElementById('editUpdatedDate').value = new Date().toISOString();
-                    document.getElementById('editUpdatedLoc').value = customer.updatedLoc || customer.updated_Loc || customer.Updated_Loc || '';
+                    console.log(customer)
+                    const form = document.getElementById("editCustomerForm");
 
-                    editModal.show();
+                    Object.entries(customer).forEach(([key, value]) => {
+                        $("#" + key.toLowerCase()).val(value ?? "");
+                    });
+
+                    bootstrap.Modal.getOrCreateInstance(document.getElementById("editModal")).show();
                 },
                 error: function () {
                     window.showError({

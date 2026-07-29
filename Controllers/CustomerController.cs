@@ -15,23 +15,6 @@ public class CustomerController : Controller
         _context = context;
     }
 
-    public async Task<IActionResult> GetCustomer(int id)
-    {
-        await using var connection = await _context.CreateOpenConnectionAsync();
-
-        var sql_customer = "SELECT * FROM customer WHERE customer_id = @Id";
-        var customer = await connection.QuerySingleOrDefaultAsync<Customer>(sql_customer, new { Id = id });
-
-        if (customer == null)
-        {
-            TempData["ToastMessage"] = "No customer found with the given ID.";
-            TempData["ToastType"] = "danger";
-            return Redirect("/customer");
-        }
-
-        return Json(customer);
-    }
-
     [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Create(Customer customer)
@@ -81,27 +64,12 @@ public class CustomerController : Controller
 
         try
         {
-            const string sql = @"
-                UPDATE customer SET
-                    name = @Name,
-                    email = @Email,
-                    phone = @Phone,
-                    address = @Address,
-                    city = @City,
-                    state = @State,
-                    postal_code = @Postal_Code,
-                    country = @Country,
-                    record_typ = @Record_Typ,
-                    customer_status = @Customer_Status,
-                    updated_by = @Updated_By,
-                    updated_date = @Updated_Date,
-                    updated_loc = @Updated_Loc
-                WHERE customer_id = @Customer_Id";
-
             await using var connection = await _context.CreateOpenConnectionAsync();
-            var rows = await connection.ExecuteAsync(sql, customer);
+            
+            var sql = "UPDATE customer SET name = @Name, email = @Email, phone = @Phone, address = @Address, city = @City, state = @State, postal_code = @Postal_Code, country = @Country, record_typ = @Record_Typ, customer_status = @Customer_Status, updated_by = @Updated_By, updated_date = @Updated_Date, updated_loc = @Updated_Loc WHERE customer_id = @Customer_Id";
+            var result = await connection.ExecuteAsync(sql, customer);
 
-            if (rows == 0)
+            if (result == 0)
             {
                 TempData["ToastMessage"] = "No matching customer was updated.";
                 TempData["ToastType"] = "danger";
@@ -114,35 +82,6 @@ public class CustomerController : Controller
         catch (Exception ex)
         {
             TempData["ToastMessage"] = $"Could not update customer: {ex.Message}";
-            TempData["ToastType"] = "danger";
-        }
-
-        return RedirectToAction("Customer", "Home");
-    }
-
-    [HttpPost]
-    [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Delete(int id)
-    {
-        try
-        {
-            await using var connection = await _context.CreateOpenConnectionAsync();
-            var rows = await connection.ExecuteAsync(
-                "DELETE FROM customer WHERE customer_id = @Id", new { Id = id });
-
-            if (rows == 0)
-            {
-                TempData["ToastMessage"] = "Customer not found.";
-                TempData["ToastType"] = "danger";
-                return RedirectToAction("Customer", "Home");
-            }
-
-            TempData["ToastMessage"] = "Customer deleted successfully.";
-            TempData["ToastType"] = "success";
-        }
-        catch (Exception ex)
-        {
-            TempData["ToastMessage"] = $"Could not delete customer: {ex.Message}";
             TempData["ToastType"] = "danger";
         }
 
