@@ -36,19 +36,10 @@ public class HomeController : Controller
     public async Task<IActionResult> Customer()
     {
         await using var connection = await _context.CreateOpenConnectionAsync();
-        var sql = "SELECT CUSTOMER_ID, NAME, EMAIL, PHONE, ADDRESS, CITY, STATE, POSTAL_CODE, COUNTRY, RECORD_TYP, CUSTOMER_STATUS, UPDATED_BY, UPDATED_DATE FROM MM_CUSTOMER;";
+        var sql = "SELECT CUSTOMER_ID, NAME, EMAIL, PHONE, ADDRESS, CITY, STATE, POSTAL_CODE, COUNTRY, RECORD_TYP, STATUS, UPDATED_BY, UPDATED_DATE FROM MM_CUSTOMER;";
         var customer = await connection.QueryAsync<Customer>(sql);
         return View(customer);
     }
-    
-    // [Authorize]
-    // [HttpGet("/customer/rows")]
-    // public async Task<IActionResult> CustomerRows()
-    // {
-    //     var customers = await GetCustomers();
-
-    //     return PartialView("_CustomerRows", customers);
-    // }
 
     [AllowAnonymous]
     [HttpGet("/not-found")]

@@ -19,23 +19,6 @@
         </div>
     </div>
 
-    @if (ViewBag.DbError != null)
-    {
-        <div class="alert alert-warning alert-dismissible fade show mb-4" role="alert">
-            <div class="d-flex align-items-center">
-                <i class="fa fa-exclamation-triangle-fill fs-4 me-3 text-warning"></i>
-                <div>
-                    <strong>Database Connection Notice:</strong> Could not connect to PostgreSQL database
-                    (<code>cms_db</code>).
-                    <div class="small text-muted mt-1">Running in fallback mode with sample customer records. All Add, Edit,
-                        and Delete operations will work in memory.
-                    </div>
-                </div>
-            </div>
-            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-        </div>
-    }
-
     <div class="card border-0">
         <div
             class="card-header bg-white py-3 border rounded-0 d-flex align-items-center justify-content-between flex-wrap gap-2 mb-2">
@@ -79,10 +62,6 @@
                                     <td>
                                         <span class="text-muted">@(string.IsNullOrEmpty(item.Phone) ? "-" : item.Phone)</span>
                                     </td>
-                                    <td>
-                                        <span
-                                        class="badge @(item.Customer_Status == "Active" ? "bg-success bg-opacity-10 text-success" : item.Customer_Status == "Pending" ? "bg-warning bg-opacity-10 text-warning" : "bg-secondary bg-opacity-10 text-secondary") fw-semibold px-2 py-1">@item.Customer_Status</span>
-                                    </td>
                                     <td class="text-end pe-4">
                                         <button class="btn btn-sm btn-action fw-semibold"
                                                 onclick="openEditModal(@item.Customer_Id)">
@@ -99,18 +78,12 @@
                         }
                         else {
                             <tr id="noDataRow">
-                                <td colspan="6" class="text-center py-5 text-muted">
+                                <td colspan="5" class="text-center py-5 text-muted">
                                     <i class="fa fa-people fs-1 d-block text-secondary mb-2"></i>
                                     No customers found. Click "Add Customer" to create one.
                                 </td>
                             </tr>
                         }
-                        <!-- <tr id="loadingRow">
-                            <td colspan="5" class="text-center py-5 text-muted">
-                                <i class="fa fa-spinner fa-spin fs-3 d-block mb-2"></i>
-                                Loading customers...
-                            </td>
-                        </tr> -->
                     </tbody>
                 </table>
             </div>
@@ -118,9 +91,6 @@
     </div>
 </div>
 
-<!-- ========================================== -->
-<!-- ADD CUSTOMER MODAL (MVC POST: Customer/Create) -->
-<!-- ========================================== -->
 <div class="modal fade" id="addModal" tabindex="-1" aria-labelledby="addModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-centered">
         <div class="modal-content border-0">
@@ -130,10 +100,9 @@
                 </h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <form id="addCustomerForm" asp-action="Create" asp-controller="Customer" method="post" novalidate>
+            <form id="addCustomerForm" novalidate>
                 @Html.AntiForgeryToken()
                 <input type="hidden" name="Created_By" value="Admin" />
-                <input type="hidden" name="Updated_By" value="Admin" />
                 <div class="modal-body">
                     <div class="row g-3">
                         <div class="col-md-6">
@@ -156,22 +125,6 @@
                             <input type="text" name="Phone" class="form-control" placeholder="+1 555-0199" required
                                    data-validation-message="Phone number is required.">
                             <div class="invalid-feedback mt-1">Phone number is required.</div>
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label fw-semibold">Customer Status</label>
-                            <select name="Customer_Status" class="form-select">
-                                <option value="Active">Active</option>
-                                <option value="Pending">Pending</option>
-                                <option value="Inactive">Inactive</option>
-                            </select>
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label fw-semibold">Record Type</label>
-                            <select name="Record_Typ" class="form-select">
-                                <option value="1">Standard (1)</option>
-                                <option value="2">VIP (2)</option>
-                                <option value="3">Corporate (3)</option>
-                            </select>
                         </div>
                         <div class="col-md-6">
                             <label class="form-label fw-semibold">Country</label>
@@ -210,9 +163,6 @@
     </div>
 </div>
 
-<!-- ========================================== -->
-<!-- MODIFY / EDIT CUSTOMER MODAL (MVC POST: Customer/Edit) -->
-<!-- ========================================== -->
 <div class="modal fade" id="editModal" tabindex="-1" aria-labelledby="editModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-centered">
         <div class="modal-content border-0">
@@ -222,16 +172,14 @@
                 </h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <form id="editCustomerForm" asp-action="Edit" asp-controller="Customer" method="post" novalidate>
+            <form id="editCustomerForm" novalidate>
                 @Html.AntiForgeryToken()
                 <div class="modal-body">
-                    <input type="hidden" name="Customer_Id" id="customer_id" />
+                    <input type="hidden" name="Customer_Id" id="customer_id" />                    
                     <input type="hidden" name="Created_By" id="created_by" />
                     <input type="hidden" name="Created_Date" id="created_date" />
                     <input type="hidden" name="Created_Loc" id="created_loc" />
-                    <input type="hidden" name="Updated_By" id="updated_by" value="Admin" />
-                    <input type="hidden" name="Updated_Date" id="updated_date" />
-                    <input type="hidden" name="Updated_Loc" id="updated_loc" />
+
 
                     <div class="row g-3">
                         <div class="col-md-6">
@@ -254,22 +202,6 @@
                             <input type="text" name="Phone" id="phone" class="form-control" required
                                    data-validation-message="Phone number is required.">
                             <div class="invalid-feedback mt-1">Phone number is required.</div>
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label fw-semibold">Customer Status</label>
-                            <select name="Customer_Status" id="customer_status" class="form-select">
-                                <option value="Active">Active</option>
-                                <option value="Pending">Pending</option>
-                                <option value="Inactive">Inactive</option>
-                            </select>
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label fw-semibold">Record Type</label>
-                            <select name="Record_Typ" id="record_typ" class="form-select">
-                                <option value="1">Standard (1)</option>
-                                <option value="2">VIP (2)</option>
-                                <option value="3">Corporate (3)</option>
-                            </select>
                         </div>
                         <div class="col-md-6">
                             <label class="form-label fw-semibold">Country</label>
@@ -329,8 +261,8 @@
 
         function loadCustomers() {
             $.ajax({
-                url: "/api/customer",
                 type: "GET",
+                url: "/api/customer",
                 success: function (customers) {
                     let tbody = $("#customerTableBody");
                     tbody.empty();
@@ -389,7 +321,11 @@
                             </td>
                         </tr>
                     `);
-                    console.error(xhr.responseText);
+                    window.notify(
+                        "danger",
+                        "Load Failed",
+                        "Unable to load customer data."
+                    );
                 }
             });
         }
@@ -403,27 +339,28 @@
                 detail: 'This action cannot be undone.',
                 confirmText: 'Confirm'
             }).then(function (confirmed) {
-                if (!confirmed) {
-                    return;
-                }
-
-                var token = $('input[name="__RequestVerificationToken"]').first().val();
+                if (!confirmed) return;
                 
                 $.ajax({
-                    url: `/api/customer/${id}`,
                     type: 'DELETE',
-                    data: {
-                        __RequestVerificationToken: token
+                    url: `/api/customer/${id}`,
+                    headers: {
+                        "RequestVerificationToken": $('input[name="__RequestVerificationToken"]').val()
                     },
                     success: function () {
+                        window.notify(
+                            "danger", 
+                            "Delete Failed", 
+                            "Customer has been deleted successfully."
+                        );
                         loadCustomers();
                     },
                     error: function () {
-                        window.showError({
-                            title: 'Delete failed',
-                            message: 'The customer could not be deleted.',
-                            detail: 'Please try again in a moment.'
-                        });
+                        window.notify(
+                            "danger", 
+                            "Delete Failed", 
+                            "Unable to delete customer. Please try again."
+                        );
                     }
                 });
             });
@@ -433,11 +370,10 @@
             if (!id) return;
 
             $.ajax({
-                url: `/api/customer/${id}`,
                 type: 'GET',
+                url: `/api/customer/${id}`,
                 dataType: 'json',
                 success: function (customer) {
-                    console.log(customer)
                     const form = document.getElementById("editCustomerForm");
 
                     Object.entries(customer).forEach(([key, value]) => {
@@ -447,13 +383,86 @@
                     bootstrap.Modal.getOrCreateInstance(document.getElementById("editModal")).show();
                 },
                 error: function () {
-                    window.showError({
-                        title: 'Load failed',
-                        message: 'The customer details could not be loaded.',
-                        detail: 'Please refresh the page and try again.'
-                    });
+                    window.notify(
+                        "danger", 
+                        "Load failed", 
+                        "Unable to load customer. Please try again."
+                    );
                 }
             });
         }
+
+        $("#editCustomerForm").submit(function(e) {
+            e.preventDefault();
+
+            const id = $("#customer_id").val();
+            if (!id) return;
+
+            const formData = Object.fromEntries(
+                new FormData(this).entries()
+            );
+
+            $.ajax({
+                type: "PUT",
+                url: `/api/customer/${id}`,
+                contentType: "application/json; charset=utf-8",                
+                headers: {
+                    "RequestVerificationToken": $('input[name="__RequestVerificationToken"]').val()
+                },
+                data: JSON.stringify(formData),
+                success: function () {
+                    bootstrap.Modal.getOrCreateInstance(document.getElementById("editModal")).hide();
+                    window.notify(
+                        "success", 
+                        "Customer Updated", 
+                        "Customer details have been updated successfully."
+                    );
+                    loadCustomers();
+                },
+                error: function (xhr) {
+                    window.notify(
+                        "danger", 
+                        "Update Failed", 
+                        "Unable to update customer. Please try again."
+                    );
+                }
+            });
+        });
+
+        $("#addCustomerForm").submit(function(e) {
+            e.preventDefault();
+
+            const formData = Object.fromEntries(
+                new FormData(this).entries()
+            );
+
+            console.log(formData)
+
+            $.ajax({
+                type: "POST",
+                url: `/api/customer`,
+                contentType: "application/json; charset=utf-8",                
+                headers: {
+                    "RequestVerificationToken": $('input[name="__RequestVerificationToken"]').val()
+                },
+                data: JSON.stringify(formData),
+                success: function () {
+                    bootstrap.Modal.getOrCreateInstance(document.getElementById("addModal")).hide();
+                    window.notify(
+                        "success", 
+                        "Customer Created", 
+                        "Customer details have been created successfully."
+                    );
+                    loadCustomers();
+                },
+                error: function (xhr) {
+                    window.notify(
+                        "danger", 
+                        "Create Failed", 
+                        "Unable to create customer. Please try again."
+                    );
+                }
+            });
+        });
     </script>
 }

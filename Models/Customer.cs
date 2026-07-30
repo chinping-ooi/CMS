@@ -16,7 +16,6 @@ namespace CMS.Models
         public string? Country { get; set; }
         public int Status { get; set; } = 1;
         public Record_Type Record_Typ { get; set; }
-        public string Customer_Status { get; set; }
         public string Created_By { get; set; }
         public DateTime Created_Date { get; set; }
         public string? Created_Loc { get; set; }

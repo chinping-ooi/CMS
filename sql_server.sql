@@ -312,8 +312,6 @@ BEGIN
         POSTAL_CODE NVARCHAR(20) NULL,
         COUNTRY NVARCHAR(100) NULL,
 
-        CUSTOMER_STATUS NVARCHAR(50) NOT NULL,
-
         RECORD_TYP INT NOT NULL DEFAULT 1,
         CREATED_BY NVARCHAR(50) NOT NULL,
         CREATED_DATE DATETIME NOT NULL,
@@ -481,7 +479,6 @@ INSERT INTO dbo.MM_CUSTOMER
     STATE,
     POSTAL_CODE,
     COUNTRY,
-    CUSTOMER_STATUS,
     CREATED_BY,
     CREATED_DATE,
     CREATED_LOC,
@@ -490,13 +487,13 @@ INSERT INTO dbo.MM_CUSTOMER
     UPDATED_LOC
 )
 VALUES
-('Acme Corporation',      'contact@acme.com',      '555-1001', '123 Main St',      'New York',      'NY', '10001', 'USA', 'Active',   'SYSTEM', GETDATE(), '127.0.0.1', NULL, NULL, NULL),
-('Global Tech',           'info@globaltech.com',   '555-1002', '456 Oak Ave',      'Los Angeles',   'CA', '90001', 'USA', 'Active',   'SYSTEM', GETDATE(), '127.0.0.1', NULL, NULL, NULL),
-('Sunrise Trading',       'sales@sunrise.com',     '555-1003', '789 Pine Rd',      'Chicago',       'IL', '60601', 'USA', 'Inactive', 'SYSTEM', GETDATE(), '127.0.0.1', NULL, NULL, NULL),
-('Blue Sky Solutions',    'hello@bluesky.com',     '555-1004', '321 Cedar Blvd',   'Houston',       'TX', '77001', 'USA', 'Active',   'SYSTEM', GETDATE(), '127.0.0.1', NULL, NULL, NULL),
-('Prime Industries',      'support@prime.com',     '555-1005', '654 Maple Dr',     'Phoenix',       'AZ', '85001', 'USA', 'Pending',  'SYSTEM', GETDATE(), '127.0.0.1', NULL, NULL, NULL),
-('Evergreen Supplies',    'contact@evergreen.com', '555-1006', '987 Birch Ln',     'Seattle',       'WA', '98101', 'USA', 'Active',   'SYSTEM', GETDATE(), '127.0.0.1', NULL, NULL, NULL),
-('Metro Logistics',       'admin@metro.com',       '555-1007', '258 Walnut St',    'Dallas',        'TX', '75201', 'USA', 'Inactive', 'SYSTEM', GETDATE(), '127.0.0.1', NULL, NULL, NULL),
-('NextGen Software',      'team@nextgen.com',      '555-1008', '147 Spruce Ct',    'Boston',        'MA', '02108', 'USA', 'Active',   'SYSTEM', GETDATE(), '127.0.0.1', NULL, NULL, NULL),
-('Green Energy Ltd',      'info@greenenergy.com',  '555-1009', '369 Elm St',       'Denver',        'CO', '80201', 'USA', 'Pending',  'SYSTEM', GETDATE(), '127.0.0.1', NULL, NULL, NULL),
-('Future Vision Inc',     'office@futurevision.com','555-1010','741 Aspen Way',    'Miami',         'FL', '33101', 'USA', 'Active',   'SYSTEM', GETDATE(), '127.0.0.1', NULL, NULL, NULL);
+('Acme Corporation',      'contact@acme.com',      '555-1001', '123 Main St',      'New York',      'NY', '10001', 'USA', 'SYSTEM', GETDATE(), '127.0.0.1', NULL, NULL, NULL),
+('Global Tech',           'info@globaltech.com',   '555-1002', '456 Oak Ave',      'Los Angeles',   'CA', '90001', 'USA', 'SYSTEM', GETDATE(), '127.0.0.1', NULL, NULL, NULL),
+('Sunrise Trading',       'sales@sunrise.com',     '555-1003', '789 Pine Rd',      'Chicago',       'IL', '60601', 'USA', 'SYSTEM', GETDATE(), '127.0.0.1', NULL, NULL, NULL),
+('Blue Sky Solutions',    'hello@bluesky.com',     '555-1004', '321 Cedar Blvd',   'Houston',       'TX', '77001', 'USA', 'SYSTEM', GETDATE(), '127.0.0.1', NULL, NULL, NULL),
+('Prime Industries',      'support@prime.com',     '555-1005', '654 Maple Dr',     'Phoenix',       'AZ', '85001', 'USA', 'SYSTEM', GETDATE(), '127.0.0.1', NULL, NULL, NULL),
+('Evergreen Supplies',    'contact@evergreen.com', '555-1006', '987 Birch Ln',     'Seattle',       'WA', '98101', 'USA', 'SYSTEM', GETDATE(), '127.0.0.1', NULL, NULL, NULL),
+('Metro Logistics',       'admin@metro.com',       '555-1007', '258 Walnut St',    'Dallas',        'TX', '75201', 'USA', 'SYSTEM', GETDATE(), '127.0.0.1', NULL, NULL, NULL),
+('NextGen Software',      'team@nextgen.com',      '555-1008', '147 Spruce Ct',    'Boston',        'MA', '02108', 'USA', 'SYSTEM', GETDATE(), '127.0.0.1', NULL, NULL, NULL),
+('Green Energy Ltd',      'info@greenenergy.com',  '555-1009', '369 Elm St',       'Denver',        'CO', '80201', 'USA', 'SYSTEM', GETDATE(), '127.0.0.1', NULL, NULL, NULL),
+('Future Vision Inc',     'office@futurevision.com','555-1010','741 Aspen Way',    'Miami',         'FL', '33101', 'USA', 'SYSTEM', GETDATE(), '127.0.0.1', NULL, NULL, NULL);

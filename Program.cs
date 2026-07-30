@@ -405,8 +405,6 @@ using (var scope = app.Services.CreateScope())
                 POSTAL_CODE NVARCHAR(20) NULL,
                 COUNTRY NVARCHAR(100) NULL,
 
-                CUSTOMER_STATUS NVARCHAR(50) NOT NULL,
-
                 STATUS INT NOT NULL DEFAULT 1,
                 RECORD_TYP INT NOT NULL DEFAULT 1,
                 CREATED_BY NVARCHAR(50) NOT NULL,

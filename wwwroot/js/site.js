@@ -66,10 +66,43 @@ window.formValidation = {
             if (!window.formValidation.validateForm(this)) {
                 event.preventDefault();
                 event.stopPropagation();
+
+				$(this).find('.is-invalid:first').focus()
                 return false;
             }
         });
 	}
+};
+
+window.notify = function (type = "success", title = "Notification", message) {
+    const toastHtml = `
+        <div class="toast-container position-fixed top-0 end-0 p-3" style="z-index:1100">
+            <div id="liveToast" class="toast border border-${type}-subtle bg-${type}-subtle"
+                 role="alert" data-bs-delay="3000">
+                <div class="toast-header bg-transparent border-${type}-subtle">
+                    <strong class="me-auto">${title}</strong>
+                    <button type="button"
+                            class="btn-close"
+                            data-bs-dismiss="toast"
+                            aria-label="Close">
+                    </button>
+                </div>
+                <div class="toast-body">
+                    ${message}
+                </div>
+            </div>
+        </div>
+    `;
+
+    $("body").append(toastHtml);
+    const toastElement = document.getElementById("liveToast");
+    const toast = new bootstrap.Toast(toastElement, {
+        delay: 3000
+    });
+    toast.show();
+    toastElement.addEventListener("hidden.bs.toast", function () {
+        toastElement.parentElement.remove();
+    });
 };
 
 document.addEventListener('DOMContentLoaded', function () {
