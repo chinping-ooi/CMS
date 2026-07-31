@@ -349,8 +349,8 @@
                     },
                     success: function () {
                         window.notify(
-                            "danger", 
-                            "Delete Failed", 
+                            "success", 
+                            "Customer Deleted", 
                             "Customer has been deleted successfully."
                         );
                         loadCustomers();
@@ -397,6 +397,8 @@
 
             const id = $("#customer_id").val();
             if (!id) return;
+            
+            if (!window.formValidation.validateForm(this) || !id) return;
 
             const formData = Object.fromEntries(
                 new FormData(this).entries()
@@ -436,7 +438,7 @@
                 new FormData(this).entries()
             );
 
-            console.log(formData)
+            if (!window.formValidation.validateForm(this)) return;
 
             $.ajax({
                 type: "POST",

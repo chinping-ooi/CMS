@@ -27,55 +27,65 @@ window.formValidation = {
 		}
 
 		if ($input.attr('type') === 'email') {
-            var emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-            if (!emailRegex.test(value)) {
-                this.setFieldError(input, 'Please enter a valid email address.');
-                return false;
-            }
-        }
+			var emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+			if (!emailRegex.test(value)) {
+				this.setFieldError(input, 'Please enter a valid email address.');
+				return false;
+			}
+		}
 
 		this.clearFieldError(input);
 		return true;
 	},
 
 	validateForm: function (form) {
-        var isValid = true;
+		var isValid = true;
 
-        $(form).find('input[required], select[required], textarea[required]').each(function () {
+		$(form).find('input[required], select[required], textarea[required]').each(function () {
 			if (!window.formValidation.validateField(this)) {
 				isValid = false;
 			}
 		});
 
-        return isValid;
-    },
+		return isValid;
+	},
 
 	setup: function (formId) {
 		var $form = $('#' + formId);
 		if (!$form.length) return;
 
 		$form.on(
-            'input blur',
-            'input[required], select[required], textarea[required]',
-            function () {
-                window.formValidation.validateField(this);
-            }
-        );
+			'input blur',
+			'input[required], select[required], textarea[required]',
+			function () {
+				window.formValidation.validateField(this);
+			}
+		);
 
 		$form.on('submit', function (event) {
-            if (!window.formValidation.validateForm(this)) {
-                event.preventDefault();
-                event.stopPropagation();
+			if (!window.formValidation.validateForm(this)) {
+				event.preventDefault();
+				event.stopPropagation();
 
-				$(this).find('.is-invalid:first').focus()
-                return false;
-            }
-        });
+				var isValid = true;
+
+				$(this).find("input[required], select[required], textarea[required]").each(function () {
+					if (!window.formValidation.validateField(this)) {
+						isValid = false;
+					}
+				});
+
+				if (!isValid) {
+					$(this).find('.is-invalid:first').focus()
+					return false;
+				}
+			}
+		});
 	}
 };
 
 window.notify = function (type = "success", title = "Notification", message) {
-    const toastHtml = `
+	const toastHtml = `
         <div class="toast-container position-fixed top-0 end-0 p-3" style="z-index:1100">
             <div id="liveToast" class="toast border border-${type}-subtle bg-${type}-subtle"
                  role="alert" data-bs-delay="3000">
@@ -94,15 +104,15 @@ window.notify = function (type = "success", title = "Notification", message) {
         </div>
     `;
 
-    $("body").append(toastHtml);
-    const toastElement = document.getElementById("liveToast");
-    const toast = new bootstrap.Toast(toastElement, {
-        delay: 3000
-    });
-    toast.show();
-    toastElement.addEventListener("hidden.bs.toast", function () {
-        toastElement.parentElement.remove();
-    });
+	$("body").append(toastHtml);
+	const toastElement = document.getElementById("liveToast");
+	const toast = new bootstrap.Toast(toastElement, {
+		delay: 3000
+	});
+	toast.show();
+	toastElement.addEventListener("hidden.bs.toast", function () {
+		toastElement.parentElement.remove();
+	});
 };
 
 document.addEventListener('DOMContentLoaded', function () {

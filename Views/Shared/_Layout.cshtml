@@ -138,84 +138,72 @@
         </div>
     </div>
 
-    <div class="modal fade" id="globalErrorModal" tabindex="-1" aria-labelledby="globalErrorModalTitle"
-         aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content border border-danger-subtle shadow-sm bg-danger-subtle">
-                <div class="modal-header">
-                    <h4 class="modal-title fw-bold text-uppercase text-danger" id="globalErrorModalTitle">Error</h4>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body">
-                    <p class="mb-2 fw-semibold text-danger" id="globalErrorModalMessage">Something went wrong.</p>
-                    <p class="text-danger-emphasis small mb-0" id="globalErrorModalDetail">Please try again.</p>
-                </div>
-                <div class="modal-footer justify-content-end">
-                    <button type="button" class="btn btn-sm btn-danger px-4 fw-semibold"
-                            data-bs-dismiss="modal">Close</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
     <script src="~/lib/jquery/dist/jquery.min.js"></script>
     <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
     <script src="~/js/site.js" asp-append-version="true"></script>
     <script>
-        document.getElementById('logoutButton')?.addEventListener('click', async () => {
-            try {
-                await fetch('/api/auth/logout', { method: 'POST' });
-            } finally {
-                window.location.assign('/login');
-            }
+        $('#logoutButton').on('click', function () {
+            $.ajax({
+                type: 'POST',
+                url: '/api/auth/logout',
+                success: function () {
+                    window.notify(
+                        'success',
+                        'User Logout',
+                        'You have been logged out successfully.'
+                    );
+                    setTimeout(function () {
+                        window.location.assign('/login');
+                    }, 1000);
+                },
+                error: function () {
+                    window.notify(
+                        'danger',
+                        'Logout Failed',
+                        'Unable to log out. Please try again.'
+                    );
+                }
+            });
         });
 
         (function () {
-        var confirmModalEl = document.getElementById('globalConfirmModal');
-        var confirmModal = new bootstrap.Modal(confirmModalEl);
-        var confirmOk = document.getElementById('globalConfirmModalOk');
-        var confirmTitle = document.getElementById('globalConfirmModalTitle');
-        var confirmMessage = document.getElementById('globalConfirmModalMessage');
-        var confirmResolve = null;
-        var errorModalEl = document.getElementById('globalErrorModal');
-        var errorModal = new bootstrap.Modal(errorModalEl);
-        var errorTitle = document.getElementById('globalErrorModalTitle');
-        var errorMessage = document.getElementById('globalErrorModalMessage');
-        var errorDetail = document.getElementById('globalErrorModalDetail');
+            var confirmModalEl = document.getElementById('globalConfirmModal');
+            if (!confirmModalEl) return;
 
-        confirmOk.addEventListener('click', function () {
-        if (confirmResolve) {
-        confirmResolve(true);
-        confirmResolve = null;
-        }
-        confirmModal.hide();
-        });
+            var confirmModal = new bootstrap.Modal(confirmModalEl);
 
-        confirmModalEl.addEventListener('hidden.bs.modal', function () {
-        if (confirmResolve) {
-        confirmResolve(false);
-        confirmResolve = null;
-        }
-        });
+            var confirmOk = $('#globalConfirmModalOk');
+            var confirmTitle = $('#globalConfirmModalTitle');
+            var confirmMessage = $('#globalConfirmModalMessage');
+            var confirmResolve = null;
 
-        window.showConfirm = function (options) {
-        options = options || {};
-        confirmTitle.textContent = options.title || 'Confirm';
-        confirmMessage.textContent = options.message || 'Are you sure?';
-        confirmOk.textContent = options.confirmText || 'Confirm';
-        confirmModal.show();
-        return new Promise(function (resolve) {
-        confirmResolve = resolve;
-        });
-        };
+            confirmOk.on('click', function () {
+                if (confirmResolve) {
+                    confirmResolve(true);
+                    confirmResolve = null;
+                }
+                confirmModal.hide();
+            });
 
-        window.showError = function (options) {
-        options = options || {};
-        errorTitle.textContent = options.title || 'Error';
-        errorMessage.textContent = options.message || 'Something went wrong.';
-        errorDetail.textContent = options.detail || 'Please try again.';
-        errorModal.show();
-        };
+            confirmModalEl.addEventListener('hidden.bs.modal', function () {
+                if (confirmResolve) {
+                    confirmResolve(false);
+                    confirmResolve = null;
+                }
+            });
+
+            window.showConfirm = function (options) {
+                options = options || {};
+
+                confirmTitle.text(options.title || 'Confirm');
+                confirmMessage.text(options.message || 'Are you sure?');
+                confirmOk.text(options.confirmText || 'Confirm');
+                confirmModal.show();
+
+                return new Promise(function (resolve) {
+                    confirmResolve = resolve;
+                });
+            };
         })();
     </script>
     @await RenderSectionAsync("Scripts", required: false)
