@@ -23,7 +23,7 @@ namespace CMS.Models
         public ICollection<TaskAttachment> Attachments { get; set; } = new List<TaskAttachment>();
         public ICollection<TaskChecklistItem> Checklist { get; set; } = new List<TaskChecklistItem>();
         public ICollection<TaskItemTag> Tags { get; set; } = new List<TaskItemTag>();
-        public int Status { get; set; } = 1;
+        public Status Status { get; set; } = Status.Active;
         public DateTime CreatedAt { get; set; }
         public DateTime UpdatedAt { get; set; }
     }

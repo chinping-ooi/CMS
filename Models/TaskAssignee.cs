@@ -8,7 +8,7 @@ namespace CMS.Models
         public TaskItem? Task { get; set; }
         public Guid UserId { get; set; }
         public User? User { get; set; }
-        public int Status { get; set; } = 1;
+        public Status Status { get; set; } = Status.Active;
         public DateTime AssignedAt { get; set; }
     }
 }

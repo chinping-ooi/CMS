@@ -12,7 +12,7 @@ namespace CMS.Models
         public string FilePath { get; set; }
         public string? FileType { get; set; }
         public long FileSize { get; set; }
-        public int Status { get; set; } = 1;
+        public Status Status { get; set; } = Status.Active;
         public DateTime UploadedAt { get; set; }
     }
 }

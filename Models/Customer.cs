@@ -14,7 +14,7 @@ namespace CMS.Models
         public string? State { get; set; }
         public string? Postal_Code { get; set; }
         public string? Country { get; set; }
-        public int Status { get; set; } = 1;
+        public Status Status { get; set; } = Status.Active;
         public Record_Type Record_Typ { get; set; }
         public string Created_By { get; set; }
         public DateTime Created_Date { get; set; }

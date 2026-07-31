@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using CMS.Enum;
 
 namespace CMS.Models
 {
@@ -9,6 +10,7 @@ namespace CMS.Models
         public string Email { get; set; }
         public string? PasswordHash { get; set; }
         public string? PasswordSalt { get; set; }
+        public Status Status { get; set; } = Status.Active;
         public DateTime CreatedAt { get; set; }
         public ICollection<ProjectCollaborator> Projects { get; set; } = new List<ProjectCollaborator>();
     }

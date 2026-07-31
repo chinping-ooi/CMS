@@ -9,7 +9,7 @@ namespace CMS.Models
         public Guid UserId { get; set; }
         public User User { get; set; }
         public string Role { get; set; }
-        public int Status { get; set; } = 1;
+        public Status Status { get; set; } = Status.Active;
         public DateTime JoinedAt { get; set; }
     }
 }
